@@ -1,7 +1,9 @@
+import type { DemoExpansion } from './expansion/seed'
 import { randomUuid } from './domain'
 import type { EventRecord, Profile, Ticket } from './types.ts'
 
 export interface DemoState {
+  expansion?: DemoExpansion
   profiles: Profile[]
   events: EventRecord[]
   tickets: Ticket[]

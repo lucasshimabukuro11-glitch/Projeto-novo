@@ -5,7 +5,7 @@ export async function createEvent(page: Page, title: string, seats: number) {
   await page.getByRole('link', { name: 'Novo evento' }).click()
   await page.getByLabel('Nome do evento').fill(title)
   await page.getByLabel('Categoria').selectOption('Educação')
-  await page.getByLabel('Descrição').fill('Uma oficina fictícia para a apresentação acadêmica do EventPass.')
+  await page.getByLabel('Descrição').fill('Uma oficina fictícia para a apresentação acadêmica do EventScan.')
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   await page.getByLabel('Data e horário de Brasília').fill(tomorrow + 'T19:00')
   await page.getByLabel('Capacidade máxima').fill(String(seats))

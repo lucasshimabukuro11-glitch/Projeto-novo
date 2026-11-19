@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Admission } from './expansion/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { coverTypes, maxCoverSize, pageSize, randomUuid, ticketCodePattern, toPage } from './domain'
 import type { CheckInResult, DashboardSnapshot, DataService, EventRecord, Profile, RosterEntry, TeamMember, Ticket, TicketWithEvent } from './types'
@@ -34,7 +35,7 @@ export const isDemo = !url && !key
 
 type Response = { data: unknown; error: { message: string } | null }
 
-function value<T>(response: Response): T {
+export function value<T>(response: Response): T {
   if (response.error) throw new Error(response.error.message)
   return response.data as T
 }
@@ -71,9 +72,16 @@ function createDataService(client: NonNullable<typeof supabase>): DataService {
       return value<EventRecord | null>(await client.from('events').select('*').eq('id', id).maybeSingle())
     },
 
-    myTickets: actor => allRows<TicketWithEvent>((from, to) => client.from('tickets')
-      .select('*, event:events!tickets_event_id_fkey(*)')
-      .eq('participant_id', actor.id).order('issued_at', { ascending: false }).order('id').range(from, to)),
+    async myTickets(actor) {
+      const [tickets, admissions] = await Promise.all([
+        allRows<TicketWithEvent>((from, to) => client.from('tickets')
+          .select('*, event:events!tickets_event_id_fkey(*)')
+          .eq('participant_id', actor.id).order('issued_at', { ascending: false }).order('id').range(from, to)),
+        allRows<{ id: string; details: Admission }>((from, to) => client.rpc('my_ticket_admissions').range(from, to)),
+      ])
+      const byId = new Map(admissions.map(row => [row.id, row.details]))
+      return tickets.map(ticket => ({ ...ticket, admission: byId.get(ticket.id) }))
+    },
 
     async reserve(_actor, eventId) {
       return value<Ticket>(await client.rpc('reserve_ticket', { p_event: eventId }))
@@ -113,8 +121,8 @@ function createDataService(client: NonNullable<typeof supabase>): DataService {
 
     checkInEvents: () => allRows<EventRecord>((from, to) => client.rpc('list_checkin_events').range(from, to)),
 
-    async validate(_actor, eventId, code) {
-      return value<CheckInResult>(await client.rpc('validate_ticket', { p_event: eventId, p_code: code }))
+    async validate(_actor, eventId, code, gate = null) {
+      return value<CheckInResult>(await client.rpc('validate_at_gate', { p_event: eventId, p_code: code, p_gate: gate }))
     },
 
     async dashboard() {
@@ -151,9 +159,12 @@ function createDataService(client: NonNullable<typeof supabase>): DataService {
       listeners.add(listener)
       if (!channel) {
         channelVersion += 1
+        const notify = () => { for (const subscriber of listeners) subscriber() }
         channel = client.channel(`eventpass-events-${channelVersion}`)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
-            for (const subscriber of listeners) subscriber()
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, notify)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'event_activity' }, notify)
+          .on('system', {}, ({ extension, status }) => {
+            if (extension === 'postgres_changes' && status === 'ok') notify()
           })
           .subscribe()
       }

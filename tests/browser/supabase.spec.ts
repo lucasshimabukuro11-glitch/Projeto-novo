@@ -66,9 +66,12 @@ test('navegador usa Supabase Auth, Storage, reserva e check-in do início ao fim
     await expect(staff.getByRole('heading', { name: 'Meus ingressos' })).toBeVisible()
     await staff.goto('/check-in?evento=' + eventId)
     await expect(staff.getByLabel('Evento em atendimento')).toHaveValue(eventId)
+    await organizer.context().setOffline(true)
     await useQrAsCamera(staff, qr)
     await staff.getByRole('button', { name: 'Abrir câmera' }).click()
     await expect(staff.getByRole('heading', { name: 'Entrada autorizada' })).toBeVisible({ timeout: 12000 })
+    await expect(organizer.getByTestId('metric-present')).toContainText('0')
+    await organizer.context().setOffline(false)
     await expect(organizer.getByTestId('metric-present')).toContainText('1', { timeout: 10000 })
     await expect(participant.getByText('Check-in realizado', { exact: true })).toBeVisible({ timeout: 10000 })
 

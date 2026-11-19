@@ -31,10 +31,12 @@ export function useResource<T>(key: string, load: () => Promise<T>, live = false
     refreshRef.current = refresh
     void refresh()
     const unwatch = live ? data.watch(refresh) : undefined
+    if (live) window.addEventListener('online', refresh)
     const interval = live ? window.setInterval(refresh, 8000) : undefined
     return () => {
       active = false
       unwatch?.()
+      if (live) window.removeEventListener('online', refresh)
       if (interval !== undefined) window.clearInterval(interval)
     }
   }, [key, live])

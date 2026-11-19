@@ -5,6 +5,7 @@ import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 import { createClient } from '@supabase/supabase-js'
 import pg from 'pg'
+import { subscribeToPostgres } from './realtime.mjs'
 
 const baseUrl = process.env.EVENTPASS_TEST_API_URL ?? 'http://127.0.0.1:54321'
 const databaseUrl = process.env.EVENTPASS_TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
@@ -36,7 +37,7 @@ async function rejected(request, message) {
 
 function eventFields(title, capacity) {
   return {
-    p_title: title, p_description: 'Evento fictício criado pela suíte de integração do EventPass.',
+    p_title: title, p_description: 'Evento fictício criado pela suíte de integração do EventScan.',
     p_category: 'Educação', p_cover_url: null, p_starts_at: new Date(Date.now() + 86400000).toISOString(),
     p_venue: 'Auditório da faculdade, Rua Teste, 10', p_city: 'São Paulo, SP', p_capacity: capacity,
   }
@@ -215,18 +216,7 @@ test('fluxo autenticado, políticas e concorrência no Supabase local', async t 
         .on('postgres_changes', {
           event: 'UPDATE', schema: 'public', table: 'events', filter: 'id=eq.' + mainEvent.id,
         }, message => { notification = message.new })
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('O canal Realtime não ficou pronto.')), 5000)
-        realtime.subscribe((status, error) => {
-          if (status === 'SUBSCRIBED') {
-            clearTimeout(timeout)
-            resolve()
-          } else if (error) {
-            clearTimeout(timeout)
-            reject(error)
-          }
-        })
-      })
+      await subscribeToPostgres(realtime)
 
       const validate = actor => () => rpc(actor, 'validate_ticket', { p_event: mainEvent.id, p_code: firstTicket.code })
       const [one, two] = await race(db, mainEvent.id, 'validate_ticket', [validate(owner), validate(staff)])
@@ -238,7 +228,7 @@ test('fluxo autenticado, políticas e concorrência no Supabase local', async t 
 
       const after = await ok(rpc(owner, 'dashboard_snapshot'))
       assert.equal(after.totals.present, before.totals.present + 1)
-      for (let i = 0; !notification && i < 50; i += 1) await delay(100)
+      for (let i = 0; notification?.present_count !== 1 && i < 50; i += 1) await delay(100)
       assert.equal(notification?.present_count, 1, 'O Realtime deve enviar o novo total após o commit.')
       await owner.client.removeChannel(realtime)
       assert.equal(after.totals.issued, 4)

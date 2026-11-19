@@ -27,7 +27,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'demo', testMatch: 'eventpass.spec.ts', use: { baseURL: demoUrl } },
+    { name: 'demo', testMatch: ['eventpass.spec.ts','eventscan.spec.ts'], use: { baseURL: demoUrl } },
     ...(publicKey ? [{ name: 'supabase-local', testMatch: 'supabase.spec.ts', use: { baseURL: connectedUrl } }] : []),
   ],
   webServer: servers,

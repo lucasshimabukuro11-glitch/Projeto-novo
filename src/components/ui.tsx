@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Image, LoaderCircle, Ticket } from 'lucide-react'
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Image, LoaderCircle, ScanLine, Ticket } from 'lucide-react'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -6,9 +6,9 @@ import type { EventRecord } from '../data/types'
 
 export function Brand() {
   return (
-    <Link to="/" className="brand" aria-label="EventPass, início">
-      <span className="brand-icon"><Ticket size={21} strokeWidth={2.3} /></span>
-      <span>Event<span className="brand-accent">Pass</span></span>
+    <Link to="/" className="brand" aria-label="EventScan, início">
+      <span className="brand-icon"><ScanLine size={21} strokeWidth={2.3} /></span>
+      <span>Event<span className="brand-accent">Scan</span></span>
     </Link>
   )
 }

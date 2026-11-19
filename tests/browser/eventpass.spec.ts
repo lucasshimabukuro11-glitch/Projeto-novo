@@ -41,7 +41,7 @@ test('criação, cadastro, QR pela câmera, segunda leitura e atualização do p
   await organizer.getByRole('button', { name: 'Autorizar funcionário' }).click()
   await expect(organizer.getByText('Funcionário autorizado para este evento.')).toBeVisible()
   await organizer.getByRole('link', { name: 'Visão geral' }).click()
-  await expect(organizer.getByTestId('metric-present')).toContainText('3')
+  await expect(organizer.getByTestId('metric-present')).toContainText('4')
 
   const participant = await context.newPage()
   await participant.goto(eventUrl)
@@ -65,13 +65,13 @@ test('criação, cadastro, QR pela câmera, segunda leitura e atualização do p
   await useQrAsCamera(staff, qr)
   await staff.getByRole('button', { name: 'Abrir câmera' }).click()
   await expect(staff.getByRole('heading', { name: 'Entrada autorizada' })).toBeVisible({ timeout: 12000 })
-  await expect(organizer.getByTestId('metric-present')).toContainText('4')
+  await expect(organizer.getByTestId('metric-present')).toContainText('5')
   await expect(organizer.locator('.activity-list')).toContainText('Check-in realizado · ' + title)
 
   await staff.getByLabel('Código do ingresso').fill(code)
   await staff.getByRole('button', { name: 'Validar ingresso' }).click()
   await expect(staff.getByRole('heading', { name: 'Ingresso já utilizado' })).toBeVisible()
-  await expect(organizer.getByTestId('metric-present')).toContainText('4')
+  await expect(organizer.getByTestId('metric-present')).toContainText('5')
 
   await staff.getByLabel('Evento em atendimento').selectOption('aurora-music-festival')
   await staff.getByLabel('Código do ingresso').fill(code)

@@ -85,7 +85,7 @@ export default function AuthPage({ signup = false }: { signup?: boolean }) {
     <div className="container auth-layout">
       <section className="auth-panel panel">
         <Link to="/" className="back-link"><ArrowLeft size={16} /> Voltar ao início</Link>
-        <h1>{signup ? 'Crie sua conta' : 'Entre no EventPass'}</h1>
+        <h1>{signup ? 'Crie sua conta' : 'Entre no EventScan'}</h1>
         <p className="auth-intro">{signup ? 'Reserve seus ingressos e acompanhe seus eventos.' : 'Acesse seus ingressos ou o painel do seu evento.'}</p>
         {isDemo && <Notice tone="info">Demonstração acadêmica. Use apenas dados fictícios.</Notice>}
         {failure && <Notice>{failure}</Notice>}

@@ -5,6 +5,7 @@ import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react
 import '@fontsource-variable/inter'
 import '@fontsource-variable/manrope'
 import './styles.css'
+import './expansion.css'
 import { AuthProvider, useAuth } from './data/auth'
 import { configIssue } from './data/supabase'
 import type { Role } from './data/types'
@@ -22,6 +23,11 @@ const ManageEvents = lazy(() => import('./pages/ManageEvents').then(module => ({
 const CreateEvent = lazy(() => import('./pages/ManageEvents').then(module => ({ default: module.CreateEvent })))
 const ManageEvent = lazy(() => import('./pages/ManageEvents').then(module => ({ default: module.ManageEvent })))
 const AdminUsers = lazy(() => import('./pages/AdminUsers'))
+const EventSetup = lazy(() => import('./pages/expansion/EventSetup'))
+const Monitor = lazy(() => import('./pages/expansion/Monitor'))
+const Audit = lazy(() => import('./pages/expansion/Audit'))
+const MyCertificates = lazy(() => import('./pages/expansion/Certificates').then(module => ({ default: module.MyCertificates })))
+const VerifyCertificate = lazy(() => import('./pages/expansion/Certificates').then(module => ({ default: module.VerifyCertificate })))
 
 function Secure({ children, role }: { children: ReactNode; role?: Role }) {
   const { profile, pending, error } = useAuth()
@@ -49,17 +55,24 @@ function App() {
             <Route path="/cadastro" element={<AuthPage key="signup" signup />} />
             <Route path="/eventos/:id" element={<EventDetails />} />
             <Route path="/ingressos/:id?" element={<Secure role="participant"><Tickets /></Secure>} />
+            <Route path="/certificados" element={<Secure role="participant"><MyCertificates /></Secure>} />
+            <Route path="/verificar-certificado" element={<VerifyCertificate />} />
             <Route path="/check-in" element={<Secure><CheckIn /></Secure>} />
             <Route path="/organizacao" element={<Secure role="organizer"><Workspace /></Secure>}>
               <Route index element={<Dashboard />} />
               <Route path="eventos" element={<ManageEvents />} />
               <Route path="eventos/novo" element={<CreateEvent />} />
               <Route path="eventos/:id" element={<ManageEvent />} />
+              <Route path="eventos/:id/configuracao" element={<EventSetup />} />
+              <Route path="monitoramento" element={<Monitor />} />
+              <Route path="auditoria" element={<Audit />} />
             </Route>
             <Route path="/administracao" element={<Secure role="admin"><Workspace admin /></Secure>}>
               <Route index element={<Dashboard admin />} />
               <Route path="eventos" element={<ManageEvents admin />} />
               <Route path="usuarios" element={<AdminUsers />} />
+              <Route path="monitoramento" element={<Monitor />} />
+              <Route path="auditoria" element={<Audit />} />
             </Route>
             <Route path="*" element={<div className="container page"><Empty title="Página não encontrada"
               action={<Link className="button secondary" to="/">Voltar ao início</Link>}>Confira o endereço ou navegue pelo menu.</Empty></div>} />

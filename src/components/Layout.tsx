@@ -51,6 +51,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             {!profile && <Link to="/#organizadores" onClick={() => setOpenMenu(false)}>Para organizadores</Link>}
             {!profile && <Link className="mobile-signup" to="/cadastro">Criar conta</Link>}
             {profile?.role === 'participant' && <NavLink to="/ingressos">Meus ingressos</NavLink>}
+            {profile?.role === 'participant' && <NavLink to="/certificados">Meus certificados</NavLink>}
             {profile?.role === 'organizer' && <NavLink to="/organizacao">Organização</NavLink>}
             {hasCheckIn && <NavLink to="/check-in">Check-in</NavLink>}
             {profile?.role === 'admin' && <NavLink to="/administracao">Administração</NavLink>}
@@ -92,7 +93,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <div className="container footer-inner">
           <Brand />
           <p>{isDemo ? 'Demonstração acadêmica · Eventos e contas fictícios' : 'Eventos e ingressos digitais'}</p>
-          <Link to="/#eventos">Explorar eventos <ArrowUpRight size={15} /></Link>
+          <Link to="/verificar-certificado">Verificar certificado <ArrowUpRight size={15} /></Link>
         </div>
       </footer>
     </>

@@ -1,3 +1,5 @@
+import type { Admission } from './expansion/types'
+
 export const categories = ['Música', 'Tecnologia', 'Gastronomia', 'Cultura', 'Educação', 'Negócios', 'Outros'] as const
 export type Category = (typeof categories)[number]
 export type Role = 'participant' | 'organizer' | 'admin'
@@ -41,15 +43,19 @@ export interface Ticket {
   issued_at: string
   cancelled_at: string | null
   checked_in_at: string | null
+  type_id?: string | null
+  sector_id?: string | null
+  seat_id?: string | null
+  request_id?: string | null
 }
 
-export type TicketWithEvent = Ticket & { event: EventRecord }
+export type TicketWithEvent = Ticket & { event: EventRecord; admission?: Admission }
 export type TeamMember = Pick<Profile, 'id' | 'display_name' | 'email'>
 export type RosterEntry = Omit<Ticket, 'code' | 'event_id' | 'participant_id'> & Pick<Profile, 'display_name' | 'email'>
 
-export type CheckInStatus = 'valid' | 'used' | 'not_found' | 'cancelled' | 'wrong_event' | 'forbidden' | 'event_unavailable'
-export type CheckInResult = { status: 'valid' | 'used'; checked_in_at: string }
-  | { status: Exclude<CheckInStatus, 'valid' | 'used'> }
+export type CheckInStatus = 'valid' | 'used' | 'not_found' | 'cancelled' | 'wrong_event' | 'forbidden' | 'event_unavailable' | 'wrong_sector' | 'gate_required' | 'rate_limited'
+export type CheckInResult = ({ status: 'valid' | 'used'; checked_in_at: string }
+  | { status: Exclude<CheckInStatus, 'valid' | 'used'> }) & Partial<Admission & { participant_name: string; event_title: string }>
 
 export interface Activity {
   id: string
@@ -80,7 +86,7 @@ export interface DataService {
   changeStatus(viewer: Profile, eventId: string, status: 'published' | 'cancelled'): Promise<EventRecord>
   managedEvents(viewer: Profile): Promise<EventRecord[]>
   checkInEvents(viewer: Profile): Promise<EventRecord[]>
-  validate(viewer: Profile, eventId: string, code: string): Promise<CheckInResult>
+  validate(viewer: Profile, eventId: string, code: string, gate?: string | null): Promise<CheckInResult>
   dashboard(viewer: Profile): Promise<DashboardSnapshot>
   roster(viewer: Profile, eventId: string, page: number): Promise<Page<RosterEntry>>
   cancelTicket(viewer: Profile, eventId: string, ticketId: string): Promise<void>

@@ -5,6 +5,8 @@ import { useAuth } from '../data/auth'
 import { data, errorMessage } from '../data'
 import { eventDate, eventStatusLabels, eventTime, isUpcoming } from '../data/domain'
 import { useResource } from '../data/useResource'
+import { expansion } from '../data/expansion'
+import TypedReservation from '../components/expansion/TypedReservation'
 import { Busy, Cover, Empty, Notice } from '../components/ui'
 
 export default function EventDetails() {
@@ -13,6 +15,8 @@ export default function EventDetails() {
   const request = useResource(`public-event:${id}:${profile?.id}`, () => data.event(id, profile), true)
   const tickets = useResource(`event-tickets:${profile?.id}`, () =>
     profile?.role === 'participant' ? data.myTickets(profile) : Promise.resolve([]), profile?.role === 'participant')
+  const sale = useResource(`ticket-options:${id}:${profile?.id}:${Boolean(request.data)}`, () =>
+    request.data?.id === id ? expansion.options(id,profile) : Promise.resolve(null),true)
   const [failure, setFailure] = useState('')
   const [booking, setBooking] = useState(false)
   const navigate = useNavigate()
@@ -51,7 +55,7 @@ export default function EventDetails() {
     <div className="container page event-details">
       <Link className="back-link" to="/#eventos"><ArrowLeft size={16} /> Ver eventos</Link>
       <Cover event={event} className="details-cover" />
-      <div className="details-grid">
+      <div className={`details-grid ${sale.data?.configured ? 'details-with-reservation' : ''}`}>
         <div>
           <div className="badge-row">
             <span className="status-chip accent">{event.category}</span>
@@ -72,7 +76,13 @@ export default function EventDetails() {
           <p>Apresente seu QR Code na entrada do evento.</p>
           <div className="reservation-price"><strong>Gratuito</strong><span><Users size={15} /> {remaining} {remaining === 1 ? 'vaga' : 'vagas'}</span></div>
           {failure && <Notice>{failure}</Notice>}
-          {existing ? (
+          {sale.pending ? <Busy text="Carregando modalidades…" /> : sale.error ? (
+            <Notice>{sale.error} <button className="text-button" onClick={sale.refresh}>Tentar novamente</button></Notice>
+          ) : sale.data?.configured ? (
+            <TypedReservation key={event.id} event={event} options={sale.data.options} viewer={profile}
+              tickets={tickets.data?.filter(ticket => ticket.event_id === id) ?? []} open={canBook}
+              onRefresh={() => { request.refresh(); sale.refresh(); tickets.refresh() }} />
+          ) : existing ? (
             <Link className="button primary" to={`/ingressos/${existing.id}`}>Ver meu ingresso <ArrowRight size={18} /></Link>
           ) : !canBook ? (
             <span className="reservation-closed">{remaining === 0 && event.status === 'published' && isUpcoming(event) ? 'Ingressos esgotados' : 'Inscrições encerradas'}</span>

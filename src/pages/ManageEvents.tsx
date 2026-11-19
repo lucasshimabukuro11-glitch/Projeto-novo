@@ -193,6 +193,8 @@ function EventManagement({ event, viewer, refreshEvent }: { event: EventRecord; 
               <button className="button primary small" disabled={pending} onClick={() => run(() => data.changeStatus(viewer, id, 'published'), 'Evento publicado no catálogo.')}>Publicar evento</button>
             )}
             <Link className="button secondary small" to={`/eventos/${id}`}>Ver página <ArrowUpRight size={16} /></Link>
+            <Link className="button secondary small" to={`/organizacao/eventos/${id}/configuracao`}>Configurar evento</Link>
+            <Link className="button secondary small" to={`/organizacao/monitoramento?evento=${id}`}>Monitoramento</Link>
             {event.status === 'published' && <Link className="button secondary small" to={`/check-in?evento=${id}`}><ScanLine size={16} /> Abrir check-in</Link>}
             {event.status !== 'cancelled' && <button disabled={pending} className="text-button danger-text" onClick={() => setConfirmation('event')}>Cancelar evento</button>}
           </div>

@@ -29,7 +29,7 @@ test('os estados de ingresso refletem check-in e cancelamento do evento', () => 
 })
 
 test('cada desfecho de check-in tem uma mensagem própria', () => {
-  const expected = ['valid', 'used', 'not_found', 'cancelled', 'wrong_event', 'forbidden', 'event_unavailable']
+  const expected = ['valid', 'used', 'not_found', 'cancelled', 'wrong_event', 'forbidden', 'event_unavailable', 'wrong_sector', 'gate_required', 'rate_limited']
   assert.deepEqual(Object.keys(checkInMessages).sort(), expected.sort())
   assert.equal(new Set(Object.values(checkInMessages).map(message => message.title)).size, expected.length)
   assert.match(checkInMessages.valid.title, /autorizada/)

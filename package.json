@@ -1,6 +1,6 @@
 {
-  "name": "eventpass",
-  "version": "1.0.0",
+  "name": "eventscan",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -10,8 +10,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "node --test tests/unit.test.ts",
-    "test:db": "node --test tests/database.test.mjs",
+    "test": "node --test tests/unit.test.ts tests/expansion.test.ts",
+    "test:db": "node --test tests/database.test.mjs tests/expansion-db.test.mjs",
     "test:e2e": "playwright test"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
     "@fontsource-variable/manrope": "^5.3.0",
     "@supabase/supabase-js": "^2.119.1",
     "@zxing/browser": "^0.2.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.75.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.1",

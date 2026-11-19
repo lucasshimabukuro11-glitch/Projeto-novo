@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowDown, ArrowRight, ArrowUpRight, CalendarDays, ChartNoAxesCombined, MapPin, ScanLine, Search, Sparkles, Ticket } from 'lucide-react'
+import { ArrowDown, ArrowRight, ArrowUpRight, Award, CalendarDays, ChartNoAxesCombined, MapPin, ScanLine, Search, Sparkles, Ticket } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../data/auth'
@@ -11,20 +11,21 @@ import { categories } from '../data/types'
 import type { Category, EventRecord } from '../data/types'
 
 const benefits = [
-  { Icon: Ticket, title: 'Ingresso no celular', copy: 'Reserve sua vaga e acesse o QR Code em Meus ingressos.' },
-  { Icon: ScanLine, title: 'Check-in em segundos', copy: 'Apresente o QR Code na entrada do evento para validar seu acesso.' },
-  { Icon: ChartNoAxesCombined, title: 'Gestão em tempo real', copy: 'Publique eventos e acompanhe as inscrições e a chegada do público.' },
+  { Icon: Ticket, title: 'Reserve seu lugar', copy: 'Escolha a modalidade e, quando disponível, o assento no mapa.' },
+  { Icon: ScanLine, title: 'Check-in por QR Code', copy: 'Apresente seu ingresso digital na portaria do setor.' },
+  { Icon: ChartNoAxesCombined, title: 'Gestão em tempo real', copy: 'Acompanhe o público, os setores e a movimentação das portarias.' },
+  { Icon: Award, title: 'Certificados digitais', copy: 'Baixe o PDF da sua participação e consulte o registro de emissão.' },
 ]
 
 function HeroTicket() {
   return (
     <div className="hero-ticket" aria-hidden="true">
       <div className="hero-ticket-copy">
-        <span className="hero-ticket-label"><Ticket size={14} /> INGRESSO DIGITAL</span>
-        <strong>Aurora Music<br />Festival</strong>
-        <span className="hero-ticket-tag"><span /> Exemplo de ingresso</span>
+        <span className="hero-ticket-label"><Ticket size={14} /> INGRESSO VIP</span>
+        <strong>Tech Summit<br />Brasil</strong>
+        <span className="hero-ticket-tag"><span /> Sala VIP · Demonstração</span>
       </div>
-      <div className="hero-ticket-qr"><QRCodeSVG value="EventPass — ingresso ilustrativo" size={70} marginSize={1} /></div>
+      <div className="hero-ticket-qr"><QRCodeSVG value="EventScan — ingresso ilustrativo" size={70} marginSize={1} /></div>
     </div>
   )
 }
@@ -72,9 +73,9 @@ export default function Landing() {
         <div className="hero-background" />
         <div className="container hero-inner">
           <div className="hero-copy">
-            <div className="hero-pill"><Sparkles size={15} /> A plataforma de eventos e ingressos</div>
+            <div className="hero-pill"><Sparkles size={15} /> Ingressos, assentos e check-in digital</div>
             <h1 id="hero-title">Grandes eventos<br /><span>começam aqui.</span></h1>
-            <p>Descubra experiências incríveis, garanta seu ingresso digital e faça check-in em segundos.</p>
+            <p>Encontre seu próximo evento, escolha seu lugar e leve o ingresso digital no celular.</p>
             <div className="hero-actions">
               <Link className="button primary" to="/#eventos">Explorar eventos <ArrowRight size={19} /></Link>
               <Link className="button secondary" to="/#organizadores">Sou organizador <ArrowUpRight size={17} /></Link>
@@ -125,7 +126,7 @@ export default function Landing() {
         <div className="organizer-banner">
           <div>
             <h2>Organizando um evento?</h2>
-            <p>Cuide das inscrições, monte sua equipe e acompanhe o check-in em um só painel.</p>
+            <p>Configure setores, acompanhe as portarias e emita certificados de participação.</p>
           </div>
           <Link className="button primary" to={organizerLink}>Acessar área do organizador <ArrowUpRight size={17} /></Link>
         </div>

@@ -22,6 +22,9 @@ export const checkInMessages: Record<CheckInStatus, { title: string; detail: str
   cancelled: { title: 'Ingresso cancelado', detail: 'Entrada negada. O ingresso ou o evento foi cancelado.' },
   wrong_event: { title: 'Ingresso de outro evento', detail: 'Entrada negada. Confirme o evento selecionado.' },
   forbidden: { title: 'Acesso não autorizado', detail: 'Você não tem permissão para validar ingressos deste evento.' },
+  wrong_sector: { title: 'Acesso negado — setor não autorizado', detail: 'Use a portaria do setor indicado no ingresso.' },
+  gate_required: { title: 'Selecione uma portaria', detail: 'Este evento exige uma portaria autorizada.' },
+  rate_limited: { title: 'Limite de validações atingido', detail: 'Aguarde até um minuto para continuar nesta conta.' },
   event_unavailable: { title: 'Evento indisponível', detail: 'O evento precisa estar publicado para aceitar check-ins.' },
 }
 

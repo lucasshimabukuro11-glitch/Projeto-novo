@@ -1,3 +1,4 @@
+import { admissionLabel } from '../data/expansion/domain'
 import { useState } from 'react'
 import { ArrowLeft, ArrowRight, CalendarDays, Copy, MapPin, QrCode } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
@@ -53,6 +54,10 @@ export default function Tickets() {
               <span><CalendarDays size={17} /> {eventDate(ticket.event.starts_at)} · {eventTime(ticket.event.starts_at)}</span>
               <span><MapPin size={17} /> {ticket.event.venue} · {ticket.event.city}</span>
             </div>
+            {ticket.admission && ticket.type_id && (
+              <p className="sale-option"><i style={{ background: ticket.admission.color ?? 'var(--accent)' }} />
+                {admissionLabel(ticket.admission)}</p>
+            )}
             <p className="muted">{profile!.display_name}</p>
           </div>
           <div className="ticket-tear" aria-hidden="true" />
@@ -86,6 +91,7 @@ export default function Tickets() {
                 <div className="ticket-card-body">
                   <span className={`status-chip ${state.tone}-text`}>{state.label}</span>
                   <h2>{ticket.event.title}</h2>
+                  {ticket.admission && ticket.type_id && <p className="muted">{admissionLabel(ticket.admission)}</p>}
                   <div className="ticket-meta">
                     <span><CalendarDays size={16} /> {eventDate(ticket.event.starts_at)} · {eventTime(ticket.event.starts_at)}</span>
                     <span><MapPin size={16} /> {ticket.event.city}</span>

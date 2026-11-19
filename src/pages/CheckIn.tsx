@@ -1,79 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { IScannerControls } from '@zxing/browser'
 import { Camera, CircleCheck, Keyboard, ScanLine, ShieldCheck, XCircle } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../data/auth'
 import { data, errorMessage } from '../data'
+import { expansion } from '../data/expansion'
+import type { Gate } from '../data/expansion/types'
 import { checkInMessages, eventDate, eventTime } from '../data/domain'
 import type { CheckInResult, EventRecord } from '../data/types'
 import { useResource } from '../data/useResource'
+import { CameraReader } from '../components/CameraReader'
 import { Busy, Empty, Notice, PageHeading } from '../components/ui'
 
-function CameraReader({ onRead, onError }: { onRead: (result: string) => void; onError: (message: string) => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const callbacks = useRef({ onRead, onError })
-  callbacks.current = { onRead, onError }
-
-  useEffect(() => {
-    const video = videoRef.current!
-    let controls: IScannerControls | undefined
-    let stream: MediaStream | undefined
-    let stopped = false
-
-    const stop = () => {
-      controls?.stop()
-      stream?.getTracks().forEach(track => track.stop())
-      video.srcObject = null
-    }
-
-    async function start() {
-      try {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          callbacks.current.onError('A câmera precisa de HTTPS ou localhost. Você pode digitar o código abaixo.')
-          return
-        }
-        const { BrowserQRCodeReader } = await import('@zxing/browser')
-        if (stopped) return
-        stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' } } })
-        if (stopped) {
-          stop()
-          return
-        }
-        controls = await new BrowserQRCodeReader().decodeFromStream(
-          stream,
-          video,
-          (result, _error, scanner) => {
-            if (result && !stopped) {
-              stopped = true
-              scanner.stop()
-              callbacks.current.onRead(result.getText())
-            }
-          },
-        )
-        if (stopped) stop()
-      } catch (issue) {
-        if (stopped) return
-        stop()
-        const denied = issue instanceof Error && issue.name === 'NotAllowedError'
-        callbacks.current.onError(denied
-          ? 'O acesso à câmera foi negado. Permita o acesso no navegador ou digite o código.'
-          : 'Não foi possível abrir a câmera. Confira se ela está disponível ou digite o código.')
-      }
-    }
-
-    void start()
-    return () => {
-      stopped = true
-      stop()
-    }
-  }, [])
-
-  return <video ref={videoRef} className="scanner-video" muted autoPlay playsInline aria-label="Prévia da câmera para leitura do QR Code" />
-}
-
-function CheckInStation({ event }: { event: EventRecord }) {
+function CheckInStation({ event, gate }: { event: EventRecord; gate: Gate | null }) {
   const { profile } = useAuth()
+  const activity = useResource(`gate-monitor:${event.id}:${gate?.id}:${profile?.id}`, () =>
+    gate ? expansion.gateActivity(profile!,event.id,gate.id) : Promise.resolve(null),Boolean(gate))
   const [scanning, setScanning] = useState(false)
   const [code, setCode] = useState('')
   const [result, setResult] = useState<CheckInResult | null>(null)
@@ -90,8 +32,9 @@ function CheckInStation({ event }: { event: EventRecord }) {
     setResult(null)
     setFailure('')
     try {
-      setResult(await data.validate(profile!, event.id, value))
+      setResult(await data.validate(profile!, event.id, value, gate?.id ?? null))
       setCode('')
+      activity.refresh()
     } catch (issue) {
       setFailure(errorMessage(issue))
     } finally {
@@ -136,12 +79,42 @@ function CheckInStation({ event }: { event: EventRecord }) {
           <div className={`scan-result panel ${result.status === 'valid' ? 'scan-valid' : 'scan-denied'}`} role="status">
             {result.status === 'valid' ? <CircleCheck size={30} /> : <XCircle size={30} />}
             <div><h3>{message.title}</h3><p>{message.detail}</p>
+              {result.participant_name && <div className="admission-details">
+                <strong>{result.participant_name}</strong><span>{result.event_title}</span>
+                <span>{result.type_name} · Setor {result.sector_name}{result.seat ? ` · Assento ${result.seat}` : ''}</span>
+              </div>}
               {'checked_in_at' in result && <time dateTime={result.checked_in_at}>{eventDate(result.checked_in_at)} · {eventTime(result.checked_in_at)}</time>}</div>
           </div>
         )}
       </div>
+      {gate && activity.data && <section className="panel expansion-panel gate-log">
+        <h2>Movimentação desta portaria</h2>
+        <p className="muted">{activity.data.allowed} entradas autorizadas · {activity.data.denied} tentativas negadas</p>
+        <ul className="gate-history">{activity.data.recent.map((row,index) => <li key={row.happened_at + index}>
+          <span>{checkInMessages[row.result].title}</span><time>{eventTime(row.happened_at)}</time>
+        </li>)}</ul>
+      </section>}
     </div>
   )
+}
+
+function EventStation({ event }: { event: EventRecord }) {
+  const viewer = useAuth().profile!
+  const request = useResource(`checkin-gates:${event.id}:${viewer.id}`, () => expansion.gates(viewer,event.id),true)
+  const [selected,setSelected] = useState('')
+  if (request.pending) return <Busy text="Carregando portarias…" />
+  if (!request.data) return <Notice>{request.error}</Notice>
+  const gate = request.data.gates.find(g => g.id === selected)
+  if (!request.data.required) return <CheckInStation event={event} gate={null} />
+  return <>
+    {request.error && <Notice>{request.error}</Notice>}
+    {!request.data.gates.length ? <Notice>Sua conta precisa de autorização para uma portaria deste evento.</Notice> :
+      <label className="event-select">Portaria em atendimento<select value={gate?.id ?? ''} onChange={e => setSelected(e.target.value)}>
+        <option value="">Selecione uma portaria</option>
+        {request.data.gates.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}
+      </select></label>}
+    {gate && <CheckInStation key={gate.id} event={event} gate={gate} />}
+  </>
 }
 
 export default function CheckIn() {
@@ -168,7 +141,7 @@ export default function CheckIn() {
             {!event && <option value="" disabled>Selecione um evento autorizado</option>}
             {events.map(item => <option value={item.id} key={item.id}>{item.title}{item.is_demo ? ' · Demonstração' : ''}</option>)}
           </select></label>
-          {event && <CheckInStation key={event.id} event={event} />}
+          {event && <EventStation key={event.id} event={event} />}
         </>
       )}
     </div>

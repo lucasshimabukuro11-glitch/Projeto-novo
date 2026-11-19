@@ -1,61 +1,11 @@
-import { isUpcoming, maxCoverSize, coverTypes, pageSize, ticketCodePattern, randomUuid, toPage } from './domain'
-import { demoAccounts, seedDemo } from './demo-seed'
+import { isUpcoming, maxCoverSize, coverTypes, pageSize, randomUuid, toPage } from './domain'
+import { demoAccounts } from './demo-seed'
 import type { DemoPersona, DemoState } from './demo-seed'
+import { transact, watchDemo } from './demo-store'
+import { demoAdmission, demoValidate } from './expansion/demo'
 import type { Activity, DataService, EventRecord, Profile, Ticket } from './types'
 
-let connection: Promise<IDBDatabase> | undefined
-let channel: BroadcastChannel | undefined
-const changes = new EventTarget()
 const sessionKey = 'eventpass.demo.profile'
-
-function database() {
-  connection ??= new Promise((resolve, reject) => {
-    const request = indexedDB.open('eventpass-demo', 1)
-    request.onupgradeneeded = () => request.result.createObjectStore('application').put(seedDemo(), 'state')
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-  return connection
-}
-
-function noticeChannel() {
-  if (!channel && 'BroadcastChannel' in globalThis) {
-    channel = new BroadcastChannel('eventpass-demo-changes')
-    channel.onmessage = () => changes.dispatchEvent(new Event('change'))
-  }
-  return channel
-}
-
-async function transact<T>(write: boolean, action: (state: DemoState) => T): Promise<T> {
-  const db = await database()
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('application', write ? 'readwrite' : 'readonly')
-    const store = transaction.objectStore('application')
-    const request = store.get('state')
-    let result: T
-    let failure: unknown
-
-    request.onsuccess = () => {
-      try {
-        const state = request.result as DemoState
-        result = action(state)
-        if (write) store.put(state, 'state')
-      } catch (error) {
-        failure = error
-        transaction.abort()
-      }
-    }
-
-    transaction.onabort = () => reject(failure ?? transaction.error ?? new Error('A demonstração não pôde salvar a operação.'))
-    transaction.oncomplete = () => {
-      if (write) {
-        changes.dispatchEvent(new Event('change'))
-        noticeChannel()?.postMessage(null)
-      }
-      resolve(result)
-    }
-  })
-}
 
 export function demoProfile() {
   const id = sessionStorage.getItem(sessionKey)
@@ -142,15 +92,16 @@ export const demoData: DataService = {
   myTickets: actor => transact(false, state => state.tickets
     .filter(row => row.participant_id === actor.id)
     .sort((a, b) => b.issued_at.localeCompare(a.issued_at))
-    .map(row => ({ ...row, event: state.events.find(event => event.id === row.event_id)! }))),
+    .map(row => ({ ...row, event: state.events.find(event => event.id === row.event_id)!, admission: demoAdmission(state, row) }))),
 
   reserve: (actor, id) => transact(true, state => {
     if (actor.role !== 'participant') throw new Error('É necessária uma conta de participante para reservar.')
     const event = state.events.find(row => row.id === id)
     if (!event || event.status !== 'published') throw new Error('Este evento não está disponível para inscrições.')
-    const existing = state.tickets.find(row => row.event_id === id && row.participant_id === actor.id)
+    const existing = state.tickets.find(row => row.event_id === id && row.participant_id === actor.id && !row.type_id)
     if (existing?.cancelled_at) throw new Error('Seu ingresso para este evento foi cancelado.')
     if (existing) return existing
+    if (state.expansion.types.some(type => type.event_id === id)) throw new Error('Selecione uma modalidade de ingresso.')
     if (!isUpcoming(event)) throw new Error('As inscrições para este evento foram encerradas.')
     if (event.reserved_count >= event.capacity) throw new Error('Este evento está lotado.')
     const ticket: Ticket = {
@@ -194,22 +145,7 @@ export const demoData: DataService = {
   checkInEvents: actor => transact(false, state => state.events
     .filter(row => row.status === 'published' && canCheckIn(state, actor, row)).sort(upcomingFirst)),
 
-  validate: (actor, id, code) => transact(true, state => {
-    const event = state.events.find(row => row.id === id)
-    if (!event || !canCheckIn(state, actor, event)) return { status: 'forbidden' }
-    if (event.status === 'draft') return { status: 'event_unavailable' }
-    const normalized = code.trim().toLowerCase()
-    const ticket = ticketCodePattern.test(normalized) ? state.tickets.find(row => row.code === normalized) : undefined
-    if (!ticket) return { status: 'not_found' }
-    if (ticket.event_id !== id) return { status: 'wrong_event' }
-    if (ticket.cancelled_at || event.status === 'cancelled') return { status: 'cancelled' }
-    if (ticket.checked_in_at) return { status: 'used', checked_in_at: ticket.checked_in_at }
-
-    ticket.checked_in_at = new Date().toISOString()
-    event.present_count += 1
-    state.checkIns.push({ ticketId: ticket.id, validatorId: actor.id, time: ticket.checked_in_at })
-    return { status: 'valid', checked_in_at: ticket.checked_in_at }
-  }),
+  validate: (actor, id, code, gate = null) => transact(true, state => demoValidate(state, actor, id, code, gate)),
 
   dashboard: actor => transact(false, state => {
     if (actor.role === 'participant') throw new Error('Você não pode acessar este painel.')
@@ -268,7 +204,7 @@ export const demoData: DataService = {
   assignStaff: (actor, id, email) => transact(true, state => {
     ownedEvent(state, actor, id)
     const member = state.profiles.find(row => row.email === email.trim().toLowerCase())
-    if (!member || member.id === actor.id) throw new Error('Informe o e-mail de outra conta EventPass.')
+    if (!member || member.id === actor.id) throw new Error('Informe o e-mail de outra conta EventScan.')
     if (!state.staff.some(row => row.eventId === id && row.userId === member.id)) {
       state.staff.push({ eventId: id, userId: member.id })
     }
@@ -277,6 +213,9 @@ export const demoData: DataService = {
   removeStaff: (actor, id, userId) => transact(true, state => {
     ownedEvent(state, actor, id)
     state.staff = state.staff.filter(row => row.eventId !== id || row.userId !== userId)
+    for (const gate of state.expansion.gates.filter(row => row.event_id === id)) {
+      gate.staff_ids = gate.staff_ids?.filter(member => member !== userId)
+    }
   }),
 
   accounts: (actor, page, onlyOrganizers) => transact(false, state => {
@@ -285,9 +224,5 @@ export const demoData: DataService = {
     return toPage(rows.slice(page * pageSize, (page + 1) * pageSize + 1))
   }),
 
-  watch(listener) {
-    noticeChannel()
-    changes.addEventListener('change', listener)
-    return () => changes.removeEventListener('change', listener)
-  },
+  watch: watchDemo,
 }
