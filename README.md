@@ -63,7 +63,7 @@ Para carregar eventos fictícios no Supabase local, cadastre `organizador@exampl
 psql 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' -v ON_ERROR_STOP=1 -f supabase/seed-demo.sql
 ```
 
-## Roteiro para a apresentação
+## Roteiro para a apresentaçãos
 
 1. Abra **Entrar → Organizador** em uma aba do modo demo. Crie um evento com data futura e capacidade de uma vaga. Salve o rascunho, publique e autorize `equipe@example.test`. No modo Supabase, entre com a conta que recebeu o papel de organizador.
 2. Em outra aba, acesse o catálogo, abra o evento e faça um cadastro de participante. No modo demo, use um endereço fictício terminado em `@example.test`.
