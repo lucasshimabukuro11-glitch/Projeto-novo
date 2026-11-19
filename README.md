@@ -1,4 +1,4 @@
-Versão atual: EventScan 2.0
+Versão atual: EventScan 3.0
 # EventScan 2.0
 
 EventScan, anteriormente EventPass, é uma plataforma de eventos gratuitos com ingressos digitais, assentos, check-in por QR Code e certificados de participação. Os painéis de organização e administração incluem monitoramento ao vivo e auditoria de acessos.
