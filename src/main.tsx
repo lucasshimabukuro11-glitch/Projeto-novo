@@ -14,6 +14,9 @@ import Workspace from './components/Workspace'
 import { Brand, Busy, Empty, Notice } from './components/ui'
 import Landing from './pages/Landing'
 
+const ProductCatalog = lazy(() => import('./pages/Products').then(m => ({ default: m.ProductCatalog })))
+const MyProducts = lazy(() => import('./pages/Products').then(m => ({ default: m.MyProducts })))
+const ProductEditor = lazy(() => import('./pages/Products').then(m => ({ default: m.ProductEditor })))
 const PasswordRecovery = lazy(() => import('./pages/PasswordRecovery'))
 const RequestOrganizer = lazy(() => import('./pages/OrganizerApplications').then(module => ({ default: module.RequestOrganizer })))
 const ReviewOrganizers = lazy(() => import('./pages/OrganizerApplications').then(module => ({ default: module.ReviewOrganizers })))
@@ -61,6 +64,10 @@ function App() {
         <Suspense fallback={<div className="container page"><Busy /></div>}>
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/produtos" element={<ProductCatalog />} />
+            <Route path="/produtos/meus" element={<Secure><MyProducts /></Secure>} />
+            <Route path="/produtos/novo" element={<Secure><ProductEditor /></Secure>} />
+            <Route path="/produtos/meus/:id/editar" element={<Secure><ProductEditor /></Secure>} />
             <Route path="/entrar" element={<AuthPage key="login" />} />
             <Route path="/cadastro" element={<AuthPage key="signup" signup />} />
             <Route path="/recuperar-senha" element={<PasswordRecovery key="recovery-request" />} />
