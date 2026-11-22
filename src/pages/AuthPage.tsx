@@ -108,6 +108,7 @@ export default function AuthPage({ signup = false }: { signup?: boolean }) {
                 placeholder={isDemo ? 'voce@example.test' : 'voce@email.com'} /></label>
               {!isDemo && <label>Senha<input name="password" type="password" autoComplete={signup ? 'new-password' : 'current-password'}
                 minLength={signup ? 8 : undefined} required placeholder={signup ? 'Pelo menos 8 caracteres' : 'Sua senha'} /></label>}
+              {!isDemo && !signup && <Link to="/recuperar-senha" className="text-button">Esqueci minha senha</Link>}
               <button className={`button ${isDemo && !signup ? 'secondary' : 'primary'}`} disabled={Boolean(loading)}>
                 {loading === 'form' ? 'Aguarde…' : signup ? 'Criar minha conta' : isDemo ? 'Entrar com e-mail fictício' : 'Entrar'} <ArrowRight size={18} />
               </button>

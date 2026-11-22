@@ -31,7 +31,12 @@ file_size_limit = "5MiB"
 [auth]
 enabled = true
 site_url = "http://localhost:5173"
-additional_redirect_urls = ["http://127.0.0.1:5173"]
+additional_redirect_urls = [
+  "http://127.0.0.1:5173",
+  "http://localhost:5173/redefinir-senha",
+  "http://127.0.0.1:5173/redefinir-senha",
+  "http://localhost:4174/redefinir-senha",
+]
 enable_signup = true
 
 [auth.email]

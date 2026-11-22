@@ -1,7 +1,7 @@
 {
   "framework": "vite",
   "git": {
-    "deploymentEnabled": { "main": false }
+    "deploymentEnabled": { "main": false, "eventscan/supabase-integration": false }
   },
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

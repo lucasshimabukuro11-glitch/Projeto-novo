@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, ImagePlus, Plus, ScanLine, Ticket, UserRoundPlus, UsersRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ArrowUpRight, CalendarDays, ImagePlus, Pencil, Plus, ScanLine, Ticket, UserRoundPlus, UsersRound } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../data/auth'
 import { data, errorMessage } from '../data'
 import { brasiliaInstant, coverTypes, eventDate, eventStatusLabels, eventTime, isUpcoming, maxCoverSize, ticketState } from '../data/domain'
 import { useResource } from '../data/useResource'
 import { categories } from '../data/types'
-import type { Category, EventRecord, Profile } from '../data/types'
+import type { Category, EventInput, EventRecord, Profile } from '../data/types'
 import { Busy, Confirmation, Cover, Empty, Notice, PageHeading, Pager } from '../components/ui'
 
 export function EventStatus({ event }: { event: EventRecord }) {
@@ -46,12 +46,37 @@ export function ManageEvents({ admin = false }: { admin?: boolean }) {
   )
 }
 
+const brasiliaInputFormat = new Intl.DateTimeFormat('sv-SE', {
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo',
+})
+
 export function CreateEvent() {
+  return <EventEditor />
+}
+
+export function EditEvent() {
+  const { id = '' } = useParams()
+  const { profile } = useAuth()
+  const request = useResource(`edit-event:${id}:${profile!.id}`, () => data.event(id, profile))
+  if (request.pending) return <Busy />
+  if (request.error) return <Notice>{request.error}</Notice>
+  if (!request.data || request.data.owner_id !== profile!.id || request.data.status === 'cancelled') {
+    return <Empty title="Evento indisponível para edição" action={<Link className="button secondary" to="/organizacao/eventos">Meus eventos</Link>}>
+      Selecione um evento ativo da sua conta.
+    </Empty>
+  }
+  return <EventEditor key={id} existing={request.data} />
+}
+
+function EventEditor({ existing }: { existing?: EventRecord }) {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const [submitting, setSubmitting] = useState(false)
   const [failure, setFailure] = useState('')
   const [file, setFile] = useState<File>()
+  const [removeCover, setRemoveCover] = useState(false)
+  const startingValue = existing ? brasiliaInputFormat.format(new Date(existing.starts_at)).replace(' ', 'T') : ''
+  const back = existing ? `/organizacao/eventos/${existing.id}` : '/organizacao/eventos'
 
   async function submit(form: FormEvent<HTMLFormElement>) {
     form.preventDefault()
@@ -60,8 +85,9 @@ export function CreateEvent() {
     const fields = new FormData(form.currentTarget)
     const text = (name: string) => String(fields.get(name) ?? '').trim()
     try {
-      const cover_url = file ? null : text('cover_url') || null
-      if (cover_url && !['https:', 'http:'].includes(new URL(cover_url).protocol)) {
+      const enteredCover = text('cover_url')
+      const cover_url = file || removeCover ? null : enteredCover || existing?.cover_url || null
+      if (enteredCover && !['https:', 'http:'].includes(new URL(enteredCover).protocol)) {
         throw new Error('Informe um endereço HTTP ou HTTPS para a capa.')
       }
       const title = text('title')
@@ -71,12 +97,18 @@ export function CreateEvent() {
       if (title.length < 3 || description.length < 10 || venue.length < 3 || city.length < 2) {
         throw new Error('Preencha o nome, a descrição, o endereço e a cidade.')
       }
-      const starts_at = brasiliaInstant(text('starts_at'))
-      if (!isUpcoming({ starts_at })) throw new Error('Escolha uma data futura no horário de Brasília.')
-      const event = await data.create(profile!, {
+      const enteredStart = text('starts_at')
+      const starts_at = existing && enteredStart === startingValue ? existing.starts_at : brasiliaInstant(enteredStart)
+      if (starts_at !== existing?.starts_at && !isUpcoming({ starts_at })) {
+        throw new Error('Escolha uma data futura no horário de Brasília.')
+      }
+      const input: EventInput = {
         title, description, category: text('category') as Category, starts_at, venue, city, cover_url,
         capacity: Number(fields.get('capacity')),
-      }, file)
+      }
+      const event = existing
+        ? await data.update(profile!, existing.id, existing.details_revision ?? 0, input, file)
+        : await data.create(profile!, input, file)
       navigate(`/organizacao/eventos/${event.id}`, { replace: true })
     } catch (issue) {
       setFailure(errorMessage(issue))
@@ -87,19 +119,21 @@ export function CreateEvent() {
 
   return (
     <>
-      <Link className="back-link" to="/organizacao/eventos"><ArrowLeft size={17} /> Meus eventos</Link>
-      <PageHeading title="Novo evento">Salve um rascunho e publique quando estiver pronto.</PageHeading>
+      <Link className="back-link" to={back}><ArrowLeft size={17} /> {existing ? 'Voltar ao evento' : 'Meus eventos'}</Link>
+      <PageHeading title={existing ? 'Editar evento' : 'Novo evento'}>
+        {existing ? 'Atualize os detalhes e veja as mudanças no catálogo e nos ingressos.' : 'Salve um rascunho e publique quando estiver pronto.'}
+      </PageHeading>
       <form className="panel editor stack-form" onSubmit={submit}>
         <div className="form-grid">
-          <label>Nome do evento<input name="title" placeholder="Ex. Semana de Tecnologia" required minLength={3} maxLength={100} /></label>
-          <label>Categoria<select name="category" required defaultValue=""><option value="" disabled>Selecione uma categoria</option>
+          <label>Nome do evento<input name="title" defaultValue={existing?.title} placeholder="Ex. Semana de Tecnologia" required minLength={3} maxLength={100} /></label>
+          <label>Categoria<select name="category" required defaultValue={existing?.category ?? ''}><option value="" disabled>Selecione uma categoria</option>
             {categories.map(category => <option key={category}>{category}</option>)}
           </select></label>
-          <label className="full">Descrição<textarea name="description" placeholder="Conte o que os participantes vão encontrar." rows={4} required minLength={10} maxLength={2000} /></label>
-          <label>Data e horário de Brasília<input name="starts_at" type="datetime-local" required /></label>
-          <label>Capacidade máxima<input name="capacity" type="number" min={1} max={100000} step={1} placeholder="Ex. 100" required /></label>
-          <label>Endereço<input name="venue" placeholder="Local, rua e número" required minLength={3} maxLength={160} /></label>
-          <label>Cidade<input name="city" placeholder="Ex. São Paulo, SP" required minLength={2} maxLength={100} /></label>
+          <label className="full">Descrição<textarea name="description" defaultValue={existing?.description} placeholder="Conte o que os participantes vão encontrar." rows={4} required minLength={10} maxLength={2000} /></label>
+          <label>Data e horário de Brasília<input name="starts_at" type="datetime-local" required defaultValue={startingValue} /></label>
+          <label>Capacidade máxima<input name="capacity" type="number" defaultValue={existing?.capacity} min={Math.max(1, existing?.reserved_count ?? 0)} max={100000} step={1} placeholder="Ex. 100" required /></label>
+          <label>Endereço<input name="venue" defaultValue={existing?.venue} placeholder="Local, rua e número" required minLength={3} maxLength={160} /></label>
+          <label>Cidade<input name="city" defaultValue={existing?.city} placeholder="Ex. São Paulo, SP" required minLength={2} maxLength={100} /></label>
           <div className="full cover-upload">
             <label><span><ImagePlus size={17} /> Imagem de capa</span><input type="file" accept={coverTypes.join(',')}
               onChange={e => {
@@ -112,13 +146,16 @@ export function CreateEvent() {
                   return
                 }
                 setFile(selected)
+                if (selected) setRemoveCover(false)
               }} /><small>JPEG, PNG, WebP ou AVIF de até 5 MB.</small></label>
-            <label>Ou use o endereço de uma imagem<input type="url" name="cover_url" placeholder="https://..." maxLength={1200} disabled={Boolean(file)} /></label>
+            <label>Ou use o endereço de uma imagem<input type="url" name="cover_url" placeholder="https://..." maxLength={1200} disabled={Boolean(file) || removeCover} /></label>
+            {existing?.cover_url && <label className="checkbox-label"><input type="checkbox" checked={removeCover} disabled={Boolean(file)}
+              onChange={e => setRemoveCover(e.target.checked)} /> Remover capa atual</label>}
           </div>
         </div>
         {failure && <Notice>{failure}</Notice>}
-        <div className="form-actions"><Link className="button secondary" to="/organizacao/eventos">Voltar</Link>
-          <button className="button primary" disabled={submitting}>{submitting ? 'Salvando…' : 'Salvar rascunho'} <ArrowRight size={18} /></button></div>
+        <div className="form-actions"><Link className="button secondary" to={back}>Voltar</Link>
+          <button className="button primary" disabled={submitting}>{submitting ? 'Salvando…' : existing ? 'Salvar alterações' : 'Salvar rascunho'} <ArrowRight size={18} /></button></div>
       </form>
     </>
   )
@@ -191,6 +228,9 @@ function EventManagement({ event, viewer, refreshEvent }: { event: EventRecord; 
           <div className="button-row">
             {event.status === 'draft' && (
               <button className="button primary small" disabled={pending} onClick={() => run(() => data.changeStatus(viewer, id, 'published'), 'Evento publicado no catálogo.')}>Publicar evento</button>
+            )}
+            {event.status !== 'cancelled' && (
+              <Link className="button secondary small" to={`/organizacao/eventos/${id}/editar`}><Pencil size={16} /> Editar evento</Link>
             )}
             <Link className="button secondary small" to={`/eventos/${id}`}>Ver página <ArrowUpRight size={16} /></Link>
             <Link className="button secondary small" to={`/organizacao/eventos/${id}/configuracao`}>Configurar evento</Link>

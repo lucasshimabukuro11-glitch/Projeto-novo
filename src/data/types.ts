@@ -29,6 +29,7 @@ export interface EventRecord {
   issued_count: number
   reserved_count: number
   present_count: number
+  details_revision?: number
   created_at: string
 }
 
@@ -83,6 +84,7 @@ export interface DataService {
   myTickets(viewer: Profile): Promise<TicketWithEvent[]>
   reserve(viewer: Profile, eventId: string): Promise<Ticket>
   create(viewer: Profile, input: EventInput, cover?: File): Promise<EventRecord>
+  update(viewer: Profile, eventId: string, revision: number, input: EventInput, cover?: File): Promise<EventRecord>
   changeStatus(viewer: Profile, eventId: string, status: 'published' | 'cancelled'): Promise<EventRecord>
   managedEvents(viewer: Profile): Promise<EventRecord[]>
   checkInEvents(viewer: Profile): Promise<EventRecord[]>
