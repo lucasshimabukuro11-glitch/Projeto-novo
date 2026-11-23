@@ -569,3 +569,19 @@ td small { display: block; margin-top: 2px; color: var(--muted); overflow-wrap: 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation-duration: .01ms !important; }
 }
+
+
+/* Catalogo de produtos */
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.product-item { overflow: hidden; height: 100%; }
+.product-picture { aspect-ratio: 16/10; background: var(--panel-up); color: var(--accent); display: grid; place-items: center; }
+.product-picture img { width: 100%; height: 100%; object-fit: cover; }
+.product-information { display: flex; flex-direction: column; gap: 8px; padding: 17px; }
+.product-information h2 { font-size: 19px; overflow-wrap: anywhere; }
+.product-information p { color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.product-information strong { color: var(--mint); font-size: 18px; }
+.product-information small { color: var(--dim); }
+.product-information .button { align-self: flex-start; margin-top: 4px; }
+.product-delete { margin: 10px 0; display: flex; gap: 7px; align-items: center; }
+.product-form { max-width: 760px; margin-inline: auto; }
+@media (max-width: 640px) { .product-grid { grid-template-columns: 1fr; } }
