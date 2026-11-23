@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../data/auth'
 import { eventDate, searchText } from '../data/domain'
 import { data } from '../data'
+import { isDemo } from '../data/supabase'
 import { useResource } from '../data/useResource'
 import { Busy, Cover, Empty, Notice } from '../components/ui'
 import { categories } from '../data/types'
@@ -65,7 +66,7 @@ export default function Landing() {
     (category === 'all' || event.category === category)
     && searchText([event.title, event.description, event.city, event.category, event.venue].join(' ')).includes(search)
   ))
-  const organizerLink = auth.profile?.role === 'organizer' ? '/organizacao' : '/entrar'
+  const organizerLink = auth.profile?.role === 'organizer' ? '/organizacao' : isDemo ? '/entrar' : '/solicitar-organizador'
 
   return (
     <>
@@ -128,7 +129,7 @@ export default function Landing() {
             <h2>Organizando um evento?</h2>
             <p>Configure setores, acompanhe as portarias e emita certificados de participação.</p>
           </div>
-          <Link className="button primary" to={organizerLink}>Acessar área do organizador <ArrowUpRight size={17} /></Link>
+          <Link className="button primary" to={organizerLink}>{!isDemo && auth.profile?.role !== 'organizer' ? 'Solicitar perfil de organizador' : 'Acessar área do organizador'} <ArrowUpRight size={17} /></Link>
         </div>
       </section>
     </>

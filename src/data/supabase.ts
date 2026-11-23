@@ -1,37 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Admission } from './expansion/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
+import type { SupabaseConfig } from './supabase-config'
 import { coverTypes, maxCoverSize, pageSize, randomUuid, ticketCodePattern, toPage } from './domain'
-import type { CheckInResult, DashboardSnapshot, DataService, EventRecord, Profile, RosterEntry, TeamMember, Ticket, TicketWithEvent } from './types'
+import type { CheckInResult, DashboardSnapshot, DataService, EventInput, EventRecord, Profile, RosterEntry, TeamMember, Ticket, TicketWithEvent } from './types'
 
-const url = String(import.meta.env.VITE_SUPABASE_URL ?? '').trim()
-const key = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '').trim()
+declare const __EVENTSCAN_SUPABASE_CONFIG__: SupabaseConfig
+const config = __EVENTSCAN_SUPABASE_CONFIG__
 
-function canUseKey(value: string) {
-  if (value.startsWith('sb_publishable_')) return true
-  try {
-    const payload = value.split('.')[1].replaceAll('-', '+').replaceAll('_', '/')
-    return JSON.parse(atob(payload)).role === 'anon'
-  } catch {
-    return false
-  }
-}
-
-function validateConfig() {
-  if (!url && !key) return null
-  if (!url || !key) return 'Preencha a URL e a chave pública do Supabase no arquivo de ambiente.'
-  if (!canUseKey(key)) return 'Configure uma chave publishable ou anon do Supabase.'
-  try {
-    if (!['https:', 'http:'].includes(new URL(url).protocol)) throw new Error()
-  } catch {
-    return 'Informe uma URL do Supabase válida.'
-  }
-  return null
-}
-
-export const configIssue = validateConfig()
-export const supabase = url && key && !configIssue ? createClient(url, key) : null
-export const isDemo = !url && !key
+export const configIssue = config.mode === 'invalid' ? config.message : null
+export const supabase = config.mode === 'supabase' ? createClient(config.url, config.key) : null
+export const isDemo = config.mode === 'demo'
 
 type Response = { data: unknown; error: { message: string } | null }
 
@@ -60,6 +39,31 @@ function createDataService(client: NonNullable<typeof supabase>): DataService {
   let channel: RealtimeChannel | null = null
   let channelVersion = 0
 
+  async function saveEvent(
+    actor: Profile, input: EventInput, file?: File, event?: { id: string; revision: number },
+  ) {
+    let object: string | undefined
+    let coverUrl = input.cover_url
+    const bucket = client.storage.from('event-covers')
+    if (file) {
+      if (!coverTypes.includes(file.type) || file.size > maxCoverSize) {
+        throw new Error('Use uma imagem JPEG, PNG, WebP ou AVIF de até 5 MB.')
+      }
+      const extension = file.type.split('/')[1]
+      object = `${actor.id}/${randomUuid()}.${extension}`
+      value(await bucket.upload(object, file, { contentType: file.type, cacheControl: '3600' }))
+      coverUrl = bucket.getPublicUrl(object).data.publicUrl
+    }
+    const result = await client.rpc(event ? 'update_event' : 'create_event', {
+      ...(event ? { p_event: event.id, p_revision: event.revision } : {}),
+      p_title: input.title, p_description: input.description, p_category: input.category, p_cover_url: coverUrl,
+      p_starts_at: input.starts_at, p_venue: input.venue, p_city: input.city, p_capacity: input.capacity,
+    })
+    // Clean up only for an explicit database rejection, since a network failure can follow a commit.
+    if (object && result.error && /^(22|23|42)[0-9A-Z]{3}$/.test(result.error.code)) await bucket.remove([object])
+    return value<EventRecord>(result)
+  }
+
   return {
     publicEvents: () => {
       const now = new Date().toISOString()
@@ -87,27 +91,9 @@ function createDataService(client: NonNullable<typeof supabase>): DataService {
       return value<Ticket>(await client.rpc('reserve_ticket', { p_event: eventId }))
     },
 
-    async create(actor, input, file) {
-      let object: string | undefined
-      let coverUrl = input.cover_url
-      const bucket = client.storage.from('event-covers')
-      if (file) {
-        if (!coverTypes.includes(file.type) || file.size > maxCoverSize) {
-          throw new Error('Use uma imagem JPEG, PNG, WebP ou AVIF de até 5 MB.')
-        }
-        const extension = file.type.split('/')[1]
-        object = `${actor.id}/${randomUuid()}.${extension}`
-        value(await bucket.upload(object, file, { contentType: file.type, cacheControl: '3600' }))
-        coverUrl = bucket.getPublicUrl(object).data.publicUrl
-      }
-      const result = await client.rpc('create_event', {
-        p_title: input.title, p_description: input.description, p_category: input.category, p_cover_url: coverUrl,
-        p_starts_at: input.starts_at, p_venue: input.venue, p_city: input.city, p_capacity: input.capacity,
-      })
-      // Clean up only for an explicit database rejection, since a network failure can follow a commit.
-      if (object && result.error && /^(22|23|42)[0-9A-Z]{3}$/.test(result.error.code)) await bucket.remove([object])
-      return value<EventRecord>(result)
-    },
+    create: (actor, input, file) => saveEvent(actor, input, file),
+
+    update: (actor, id, revision, input, file) => saveEvent(actor, input, file, { id, revision }),
 
     async changeStatus(_actor, eventId, status) {
       return value<EventRecord>(await client.rpc('set_event_status', { p_event: eventId, p_status: status }))

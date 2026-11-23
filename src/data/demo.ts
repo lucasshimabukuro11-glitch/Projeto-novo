@@ -128,6 +128,25 @@ export const demoData: DataService = {
     })
   },
 
+  async update(actor, id, revision, input, file) {
+    const cover_url = file ? await readCover(file) : input.cover_url
+    return transact(true, state => {
+      const event = ownedEvent(state, actor, id)
+      if (event.status === 'cancelled') throw new Error('Eventos cancelados permanecem no histórico.')
+      if ((event.details_revision ?? 0) !== revision) {
+        throw new Error('Os dados do evento mudaram. Atualize a página antes de editar novamente.')
+      }
+      if (input.starts_at !== event.starts_at && !isUpcoming(input)) {
+        throw new Error('Escolha uma data futura para alterar o horário do evento.')
+      }
+      const allocated = state.expansion.sectors.filter(row => row.event_id === id).reduce((sum, row) => sum + row.capacity, 0)
+      if (input.capacity < Math.max(1, event.reserved_count, allocated) || input.capacity > 100000) {
+        throw new Error('A capacidade precisa cobrir as reservas ativas e as vagas dos setores.')
+      }
+      return Object.assign(event, input, { cover_url, details_revision: revision + 1 })
+    })
+  },
+
   changeStatus: (actor, id, status) => transact(true, state => {
     const event = ownedEvent(state, actor, id)
     if (event.status === status) return event

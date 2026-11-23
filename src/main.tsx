@@ -14,6 +14,10 @@ import Workspace from './components/Workspace'
 import { Brand, Busy, Empty, Notice } from './components/ui'
 import Landing from './pages/Landing'
 
+const PasswordRecovery = lazy(() => import('./pages/PasswordRecovery'))
+const RequestOrganizer = lazy(() => import('./pages/OrganizerApplications').then(module => ({ default: module.RequestOrganizer })))
+const ReviewOrganizers = lazy(() => import('./pages/OrganizerApplications').then(module => ({ default: module.ReviewOrganizers })))
+const EditEvent = lazy(() => import('./pages/ManageEvents').then(module => ({ default: module.EditEvent })))
 const AuthPage = lazy(() => import('./pages/AuthPage'))
 const EventDetails = lazy(() => import('./pages/EventDetails'))
 const Tickets = lazy(() => import('./pages/Tickets'))
@@ -44,7 +48,13 @@ function Secure({ children, role }: { children: ReactNode; role?: Role }) {
 }
 
 function App() {
-  if (configIssue) return <div className="container page"><Brand /><Notice>{configIssue}</Notice></div>
+  if (configIssue) return <main className="container page">
+    <Brand />
+    <section className="panel expansion-panel">
+      <h1>Configuração do Supabase necessária</h1>
+      <Notice>{configIssue}</Notice>
+    </section>
+  </main>
   return (
     <AuthProvider>
       <Layout>
@@ -53,9 +63,12 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/entrar" element={<AuthPage key="login" />} />
             <Route path="/cadastro" element={<AuthPage key="signup" signup />} />
+            <Route path="/recuperar-senha" element={<PasswordRecovery key="recovery-request" />} />
+            <Route path="/redefinir-senha" element={<PasswordRecovery key="recovery-reset" reset />} />
+            <Route path="/solicitar-organizador" element={<Secure><RequestOrganizer /></Secure>} />
             <Route path="/eventos/:id" element={<EventDetails />} />
-            <Route path="/ingressos/:id?" element={<Secure role="participant"><Tickets /></Secure>} />
-            <Route path="/certificados" element={<Secure role="participant"><MyCertificates /></Secure>} />
+            <Route path="/ingressos/:id?" element={<Secure><Tickets /></Secure>} />
+            <Route path="/certificados" element={<Secure><MyCertificates /></Secure>} />
             <Route path="/verificar-certificado" element={<VerifyCertificate />} />
             <Route path="/check-in" element={<Secure><CheckIn /></Secure>} />
             <Route path="/organizacao" element={<Secure role="organizer"><Workspace /></Secure>}>
@@ -63,6 +76,7 @@ function App() {
               <Route path="eventos" element={<ManageEvents />} />
               <Route path="eventos/novo" element={<CreateEvent />} />
               <Route path="eventos/:id" element={<ManageEvent />} />
+              <Route path="eventos/:id/editar" element={<EditEvent />} />
               <Route path="eventos/:id/configuracao" element={<EventSetup />} />
               <Route path="monitoramento" element={<Monitor />} />
               <Route path="auditoria" element={<Audit />} />
@@ -71,6 +85,7 @@ function App() {
               <Route index element={<Dashboard admin />} />
               <Route path="eventos" element={<ManageEvents admin />} />
               <Route path="usuarios" element={<AdminUsers />} />
+              <Route path="organizadores" element={<ReviewOrganizers />} />
               <Route path="monitoramento" element={<Monitor />} />
               <Route path="auditoria" element={<Audit />} />
             </Route>

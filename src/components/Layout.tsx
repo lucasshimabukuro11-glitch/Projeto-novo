@@ -69,6 +69,15 @@ export default function Layout({ children }: { children: ReactNode }) {
                   <div className="account-menu">
                     <strong>{profile.display_name}</strong>
                     <span>{roleLabels[profile.role]}</span>
+                    {profile.role !== 'participant' && (
+                      <>
+                        <Link to="/ingressos" onClick={() => setOpenAccount(false)}>Meus ingressos</Link>
+                        <Link to="/certificados" onClick={() => setOpenAccount(false)}>Meus certificados</Link>
+                      </>
+                    )}
+                    {!isDemo && profile.role === 'participant' && (
+                      <Link to="/solicitar-organizador" onClick={() => setOpenAccount(false)}>Perfil de organizador</Link>
+                    )}
                     {isDemo && <Link to="/entrar" onClick={() => setOpenAccount(false)}>Trocar perfil de demonstração</Link>}
                     <button onClick={logout}><LogOut size={16} /> Sair</button>
                   </div>

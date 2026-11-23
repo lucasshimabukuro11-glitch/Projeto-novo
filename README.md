@@ -1,5 +1,4 @@
-Versão atual: EventScan 3.0
-# EventScan 2.0
+# EventScan 3.0
 
 EventScan, anteriormente EventPass, é uma plataforma de eventos gratuitos com ingressos digitais, assentos, check-in por QR Code e certificados de participação. Os painéis de organização e administração incluem monitoramento ao vivo e auditoria de acessos.
 
@@ -14,11 +13,13 @@ npm ci
 npm run dev
 ```
 
-Abra `http://localhost:5173`. Com as variáveis do Supabase vazias, a aplicação abre em **Modo demo**. Os eventos e as contas fictícias ficam no IndexedDB. Abas do mesmo navegador compartilham os dados da demonstração e podem usar perfis diferentes. Abra cada perfil digitando o endereço em uma nova aba. Se uma aba da versão anterior bloquear a atualização da demonstração, feche-a e recarregue o site.
+Abra `http://localhost:5173`. No servidor de desenvolvimento, com as duas variáveis do Supabase vazias, a aplicação abre em **Modo demo**. Os eventos e as contas fictícias ficam no IndexedDB. Abas do mesmo navegador compartilham os dados da demonstração e podem usar perfis diferentes. Abra cada perfil digitando o endereço em uma nova aba. Se uma aba da versão anterior bloquear a atualização da demonstração, feche-a e recarregue o site.
 
 A demonstração inclui o **Tech Summit Brasil** com modalidades Pista e VIP, mapa do auditório, portarias e histórico fictício. A participante Marina possui um certificado emitido para a **Jornada Universitária de Inovação**. Para usar os mesmos ingressos em aparelhos diferentes, configure o Supabase.
 
 ## Supabase
+
+Para configurar o projeto online, siga o guia de instalação, migrações, autenticação e Vercel. [CONFIGURACAO_SUPABASE.md](CONFIGURACAO_SUPABASE.md)
 
 ### Instância local
 
@@ -42,19 +43,20 @@ VITE_SUPABASE_URL=http://127.0.0.1:54321
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-O banco local confirma e-mails automaticamente na configuração deste repositório.
+O banco local confirma e-mails automaticamente na configuração deste repositório. Os links de recuperação chegam ao Mailpit em `http://127.0.0.1:54324`.
 
 ### Atualizar um projeto Supabase com a versão anterior
 
 1. Confirme que o banco possui o esquema inicial do EventPass e faça backup. Em uma instalação totalmente nova, comece pela [migração inicial](supabase/migrations/20261118000000_eventpass.sql).
-2. Aplique os três arquivos seguintes, na ordem abaixo, em um ambiente de teste. Em um projeto administrado pelo SQL Editor, execute cada arquivo inteiro uma vez. Cada arquivo usa uma transação. Quando o histórico é administrado pela CLI, aplique as versões pendentes pelo fluxo normal da equipe.
-3. Verifique o mapa, o check-in e o certificado no ambiente de teste antes de aplicar as migrações no projeto que será usado pela Vercel.
+2. Aplique, na ordem abaixo, somente os arquivos ainda pendentes. Em um projeto administrado pelo SQL Editor, execute cada arquivo inteiro uma vez. Cada arquivo usa uma transação. Quando o histórico é administrado pela CLI, aplique as versões pendentes pelo fluxo normal da equipe.
+3. Verifique o mapa, o check-in, o certificado e a aprovação de organizadores em uma instância de teste antes de atualizar o projeto usado pela Vercel.
 
 | Migração | O que acrescenta | Como validar |
 |---|---|---|
 | [20261119000000](supabase/migrations/20261119000000_eventscan_ticketing.sql) | Setores, modalidades, portarias, mapas e reserva transacional | Crie setores e uma modalidade. Verifique um ingresso anterior e simule a disputa de um mesmo assento. |
 | [20261119000001](supabase/migrations/20261119000001_eventscan_audit.sql) | Auditoria, monitor, alertas e limites | Compare a presença antes e depois de um check-in. Confira a negativa por setor incorreto e o registro histórico das entradas anteriores. |
 | [20261119000002](supabase/migrations/20261119000002_eventscan_certificates.sql) | Modelos, atividades, emissão, verificação e revogação | Teste uma conta com requisitos pendentes. Depois de cumprir os requisitos, emita um certificado e consulte o código público. |
+| [20261122000000](supabase/migrations/20261122000000_eventscan_organizers_and_event_edit.sql) | Aprovação de organizadores e edição das informações do evento | Envie e aprove uma solicitação. Edite um evento publicado e confira a leitura de um ingresso já emitido. |
 
 Os códigos, IDs e relações dos ingressos anteriores são preservados. Ingressos da primeira versão usam a entrada geral. Se forem adicionadas portarias a um evento com ingressos antigos, configure uma **Portaria Geral**, sem setor, e dê acesso à equipe responsável. O painel de auditoria recebe os check-ins bem-sucedidos da primeira versão como histórico. As negativas anteriores à atualização não foram registradas pela versão original.
 
@@ -62,14 +64,9 @@ Use a **Project URL** e a chave **Publishable** ou **anon** nas duas variáveis 
 
 ### Contas e permissões
 
-Todo cadastro cria um **participante**. O responsável pelo projeto pode atribuir papéis a contas cadastradas e confirmadas. Substitua os e-mails de exemplo pelos endereços das contas correspondentes.
+Todo cadastro cria um **participante**. Use **Minha conta → Perfil de organizador** para solicitar acesso. Administradores podem aprovar ou rejeitar solicitações no painel. O guia explica como habilitar a primeira conta administrativa. [Contas administrativas](CONFIGURACAO_SUPABASE.md#4-habilitar-o-primeiro-administrador)
 
-```sql
-update public.profiles set role = 'organizer' where email = 'organizador@seu-dominio.com';
-update public.profiles set role = 'admin' where email = 'admin@seu-dominio.com';
-```
-
-Entre novamente após mudar um papel. O organizador adiciona contas à **Equipe de acesso** do próprio evento. Quando existem portarias, ele também atribui por onde cada funcionário pode operar. Administradores podem consultar os eventos, o monitor, a auditoria e os limites globais.
+O organizador adiciona contas à **Equipe de acesso** do próprio evento. Quando existem portarias, ele também atribui por onde cada funcionário pode operar. Administradores podem consultar os eventos, o monitor, a auditoria e os limites globais.
 
 O [seed de eventos fictícios](supabase/seed-demo.sql) continua disponível para Supabase local. Cadastre e confirme `organizador@example.test`, `equipe@example.test` e, opcionalmente, `admin@example.test` antes de executar o seed. Os cenários ampliados já vêm no modo demo do navegador.
 
@@ -117,13 +114,13 @@ npm run test:db
 npm run test:e2e
 ```
 
-As suítes de integração criam e removem apenas suas próprias contas e seus registros fictícios no Supabase local. Elas cobrem permissões, capacidade, concorrência por assento e check-in, portarias, alertas, Realtime e emissão e revogação. O Playwright cobre os fluxos anteriores e os novos, incluindo seleção de assento, CSV, PDF, verificação pública e reconexão. O leitor é exercitado no Chromium com vídeo simulado.
+As suítes de integração criam e removem apenas suas próprias contas e seus registros fictícios no Supabase local. Elas cobrem permissões, capacidade, concorrência por assento e check-in, portarias, alertas, Realtime, certificados e aprovação de organizadores. O Playwright exercita a recuperação de senha por e-mail local, a edição de eventos após uma reserva, a seleção de assento, CSV, PDF, verificação pública e reconexão. O leitor usa vídeo simulado no Chromium.
 
 ## Preparar a atualização na Vercel
 
 O [vercel.json](vercel.json) usa o preset Vite com suporte a links diretos. Quando a atualização for autorizada, use o projeto Vercel existente, que deve apontar para este repositório. Configure Node 24, comando `npm run build` e diretório `dist`. Se o repositório for importado a partir de uma pasta acima do projeto, ajuste o **Root Directory** para a pasta que contém `package.json`.
 
-Aplique as migrações incrementais no Supabase usado pelo ambiente antes de publicar a nova versão. Configure as duas variáveis públicas do Supabase na Vercel e os endereços de redirecionamento em Authentication. Para validar o endereço final, abra uma página de evento, o check-in e `/verificar-certificado` diretamente.
+Aplique as migrações incrementais e configure as variáveis públicas e os endereços de retorno antes de publicar a nova versão. A página exibe um erro de configuração em produção quando as variáveis estão ausentes. [Passo a passo da Vercel](CONFIGURACAO_SUPABASE.md#3-conectar-o-projeto-vercel-existente)
 
 `git.deploymentEnabled.main` desativa o gatilho automático da Vercel para pushes na `main`. Após validar as migrações no Supabase usado pelo site, publique manualmente o commit autorizado no projeto Vercel existente. Para voltar a publicar automaticamente a `main`, retire a regra em uma atualização autorizada.
 
@@ -132,5 +129,5 @@ Aplique as migrações incrementais no Supabase usado pelo ambiente antes de pub
 - `src/pages/expansion` reúne configuração de eventos, monitoramento, auditoria e certificados.
 - `src/components/expansion` contém editor de assentos, reserva por modalidade, formulários e PDF.
 - `src/data/expansion` concentra os contratos de dados e as implementações supabase e demo.
-- `supabase/migrations` mantém a instalação inicial e as três alterações incrementais.
+- `supabase/migrations` mantém a instalação inicial e as quatro alterações incrementais.
 - `tests` contém as suítes unitárias, de integração e de navegador.

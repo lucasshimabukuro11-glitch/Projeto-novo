@@ -365,7 +365,7 @@ export const demoExpansion: ExpansionService = {
     if (existing?.revoked_at) throw new Error('Este certificado foi revogado.')
     if (existing) return existing
     const event = state.events.find(e => e.id === id)
-    if (!event || actor.role !== 'participant' || eligibility(state,event,actor) !== 'eligible') throw new Error('A inscrição ainda não atende aos requisitos do certificado.')
+    if (!event || eligibility(state,event,actor) !== 'eligible') throw new Error('A inscrição ainda não atende aos requisitos do certificado.')
     const template = state.expansion.settings[id]
     const details = {
       participant_name: actor.display_name,event_name: template.event_name,organizer_name: template.organizer_name,
