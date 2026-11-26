@@ -241,6 +241,26 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .panel-heading > svg { flex-shrink: 0; color: var(--accent); }
 .panel h2 { font-size: 18px; letter-spacing: -.022em; }
 .panel-heading p { color: var(--muted); margin-top: 5px; font-size: 13px; line-height: 1.5; }
+.about-page { display: grid; gap: 16px; max-width: 960px; }
+.about-overview {
+  padding: clamp(24px, 5vw, 52px);
+  border-color: var(--line-light);
+  background: radial-gradient(ellipse at top right, #402467, transparent 72%), var(--panel);
+}
+.about-overview .page-heading { margin-bottom: 0; }
+.about-overview p { max-width: 62ch; margin-top: 14px; font-size: 16px; line-height: 1.7; }
+.about-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.about-card { padding: clamp(20px, 3vw, 28px); }
+.about-author { border-inline-start: 3px solid var(--accent-strong); }
+.about-author p {
+  margin-top: 10px; color: var(--accent); overflow-wrap: anywhere;
+  font: 800 clamp(25px, 4vw, 36px)/1.2 var(--display); letter-spacing: -.04em;
+}
+.about-technologies {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 0; margin: 14px 0 0; list-style: none;
+}
+.about-technologies .status-chip { font-size: 13px; }
 .busy { display: flex; gap: 9px; justify-content: center; align-items: center; min-height: 130px; color: var(--muted); }
 .busy svg { color: var(--accent); }
 .notice {
@@ -485,6 +505,7 @@ td small { display: block; margin-top: 2px; color: var(--muted); overflow-wrap: 
 
 @media (max-width: 590px) {
   .container { width: calc(100% - 32px); }
+  .about-grid { grid-template-columns: minmax(0, 1fr); }
   .brand { font-size: 22px; gap: 7px; }
   .brand-icon { width: 30px; height: 30px; border-radius: 8px; }
   .brand-icon svg { width: 17px; }

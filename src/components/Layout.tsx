@@ -50,6 +50,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <NavLink to="/produtos" onClick={() => setOpenMenu(false)}>Produtos</NavLink>
             {!profile && <Link to="/#como-funciona" onClick={() => setOpenMenu(false)}>Como funciona</Link>}
             {!profile && <Link to="/#organizadores" onClick={() => setOpenMenu(false)}>Para organizadores</Link>}
+            <NavLink to="/sobre" onClick={() => setOpenMenu(false)}>Sobre</NavLink>
             {!profile && <Link className="mobile-signup" to="/cadastro">Criar conta</Link>}
             {profile?.role === 'participant' && <NavLink to="/ingressos">Meus ingressos</NavLink>}
             {profile?.role === 'participant' && <NavLink to="/certificados">Meus certificados</NavLink>}
