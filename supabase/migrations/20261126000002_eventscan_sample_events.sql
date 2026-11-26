@@ -18,6 +18,7 @@ language plpgsql security definer set search_path = '' as $$
 declare
   sample record;
   v_event_id uuid;
+  v_sector_id uuid;
   v_starts_at timestamptz;
 begin
   -- Uma chamada concorrente aguarda a outra; a marcacao impede repeticoes.
@@ -76,6 +77,22 @@ begin
 
     insert into eventpass_private.provisioned_sample_events (event_id, owner_id, sample_number)
     values (v_event_id, sample.user_id, sample.sample_number);
+
+    -- Configuracao basica para simular reserva, QR Code e check-in, sem presencas falsas.
+    insert into public.event_sectors(event_id, name, description, capacity, seated)
+    values (v_event_id, 'Geral', 'Setor unico de demonstracao, sem assentos marcados.', sample.capacity, false)
+    returning id into v_sector_id;
+
+    insert into public.ticket_types(
+      event_id, sector_id, name, description, capacity, per_person, color, active
+    ) values (
+      v_event_id, v_sector_id, 'Entrada gratuita (Exemplo)',
+      'Ingresso ficticio para testar o fluxo de inscricao e check-in.',
+      sample.capacity, 1, '#a78bfa', true
+    );
+
+    insert into public.event_gates(event_id, sector_id, name)
+    values (v_event_id, v_sector_id, 'Entrada principal (Exemplo)');
 
     if sample.certificate_hours is not null then
       insert into public.certificate_settings (
