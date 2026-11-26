@@ -148,6 +148,8 @@ async function provision() {
     fail('A verificação dos papéis no banco falhou.')
   }
   const counts = checked(await admin.rpc('seed_provisioned_products'), 'Não foi possível cadastrar os produtos de exemplo')
+  const events = checked(await admin.rpc('seed_provisioned_events'),
+    'Não foi possível cadastrar os eventos fictícios e configurar os certificados')
 
   for (const account of newAccounts) {
     const login = makeClient(config.api, config.publicKey)
@@ -169,6 +171,8 @@ async function provision() {
     acesso: newAccounts.some(row => row.slot === account.slot) ? 'Login inicial validado no Auth'
       : verified.find(row => row.slot === account.slot)?.activated ? 'Ativado' : 'Aguardando troca de senha',
     exemplos: Number(counts.find(row => row.slot === account.slot)?.example_count ?? 0),
+    eventos: Number(events.find(row => row.slot === account.slot)?.event_count ?? 0),
+    eventosComCertificado: Number(events.find(row => row.slot === account.slot)?.certificate_event_count ?? 0),
   })))
 }
 
