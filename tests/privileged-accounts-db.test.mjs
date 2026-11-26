@@ -89,6 +89,31 @@ suite('provisiona quatro contas, protege a ativação e aplica RLS de produtos',
       assert.deepEqual(owners.filter(owner => owner.role === 'organizer')
         .map(owner => scoped.filter(product => product.owner_id === owner.id).length), [6, 6, 6])
       assert.ok(scoped.every(product => product.category_id && /^\/images\/products\/.+\.webp$/.test(product.image_url)))
+      const seeded = ok(await cloudAdmin.rpc('seed_provisioned_events'))
+      assert.deepEqual(seeded.map(row => [row.slot, Number(row.event_count), Number(row.certificate_event_count)]),
+        [['admin', 0, 0], ['organizer-1', 3, 1], ['organizer-2', 3, 1], ['organizer-3', 3, 2]])
+      const eventRecords = await db.query(`
+        select s.event_id, s.owner_id, s.sample_number, e.is_demo, e.status,
+               e.starts_at, cs.enabled, cs.completed_at,
+               (select count(*) from public.certificate_activities ca
+                where ca.event_id = e.id and ca.required) as activities
+        from eventpass_private.provisioned_sample_events s
+        join public.events e on e.id = s.event_id
+        where s.owner_id = any($1)
+      `, [owners.map(row => row.id)])
+      assert.equal(eventRecords.rows.length, 9)
+      assert.ok(eventRecords.rows.every(row => row.is_demo && row.status === 'published'
+        && new Date(row.starts_at).getTime() > Date.now()))
+      assert.equal(eventRecords.rows.filter(row => row.enabled).length, 4)
+      assert.ok(eventRecords.rows.filter(row => row.enabled)
+        .every(row => row.completed_at === null && Number(row.activities) === 1))
+      const certificates = await db.query('select count(*) from public.certificates where event_id = any($1)',
+        [eventRecords.rows.map(row => row.event_id)])
+      assert.equal(Number(certificates.rows[0].count), 0)
+      assert.deepEqual(ok(await cloudAdmin.rpc('seed_provisioned_events')), seeded)
+      assert.ok((await client().rpc('seed_provisioned_events')).error,
+        'O cadastro de eventos de exemplo é exclusivo da chave administrativa')
+
     })
 
     await t.test('rejeita operações de quatro sessões temporárias e invalida senhas iniciais após a troca', async () => {
@@ -188,6 +213,7 @@ suite('provisiona quatro contas, protege a ativação e aplica RLS de produtos',
       }
       const fixtures = await db.query('select id from auth.users where email = any($1)', [emails])
       const ids = fixtures.rows.map(row => row.id)
+      await db.query('delete from public.events where owner_id = any($1)', [ids])
       await db.query('delete from eventpass_private.account_role_changes where account_id = any($1)', [ids])
       await db.query('delete from auth.users where id = any($1)', [ids])
       if (categories.length) await db.query('delete from public.product_categories where id = any($1)', [categories])
