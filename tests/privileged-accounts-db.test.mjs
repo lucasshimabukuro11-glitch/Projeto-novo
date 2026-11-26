@@ -102,6 +102,17 @@ suite('provisiona quatro contas, protege a ativação e aplica RLS de produtos',
         where s.owner_id = any($1)
       `, [owners.map(row => row.id)])
       assert.equal(eventRecords.rows.length, 9)
+      const ticketOptions = await db.query(`
+        select e.id,
+          (select count(*) from public.event_sectors s where s.event_id = e.id) as sectors,
+          (select count(*) from public.ticket_types t
+            where t.event_id = e.id and t.active and t.per_person = 1) as ticket_types,
+          (select count(*) from public.event_gates g where g.event_id = e.id) as gates
+        from public.events e
+        where e.id = any($1)
+      `, [eventRecords.rows.map(row => row.event_id)])
+      assert.ok(ticketOptions.rows.every(row => Number(row.sectors) === 1
+        && Number(row.ticket_types) === 1 && Number(row.gates) === 1))
       assert.ok(eventRecords.rows.every(row => row.is_demo && row.status === 'published'
         && new Date(row.starts_at).getTime() > Date.now()))
       assert.equal(eventRecords.rows.filter(row => row.enabled).length, 4)
