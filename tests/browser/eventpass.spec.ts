@@ -33,6 +33,37 @@ test('catálogo responsivo oferece navegação, busca e filtros', async ({ page 
   await expect(page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: 'Criar conta' })).toBeVisible()
 })
 
+test('a página Sobre apresenta o autor, a finalidade e as tecnologias sem login', async ({ page }) => {
+  await page.goto('/')
+  const menu = page.getByRole('navigation', { name: 'Menu principal' })
+  await menu.getByRole('link', { name: 'Sobre', exact: true }).click()
+  await expect(page).toHaveURL(/\/sobre$/)
+  await page.reload()
+
+  const content = page.getByRole('main')
+  await expect(content.getByRole('heading', { name: 'Sobre o EventScan', level: 1 })).toBeVisible()
+  await expect(content.getByText('Lucas Shimabukuro', { exact: true })).toBeVisible()
+  await expect(content).toContainText(/organizar eventos.*gerenciar inscrições.*QR Code.*check-ins.*certificados de participação/)
+  await expect(content.getByRole('listitem')).toHaveText(['React', 'TypeScript', 'Vite', 'Supabase', 'PostgreSQL', 'GitHub', 'Vercel'])
+  await expect(page.getByRole('link', { name: 'Entrar', exact: true })).toBeVisible()
+  await expect(menu.getByRole('link', { name: 'Sobre', exact: true })).toHaveAttribute('aria-current', 'page')
+})
+
+test('o menu recolhido abre a página Sobre no tablet e no celular', async ({ page }) => {
+  const menu = page.getByRole('navigation', { name: 'Menu principal' })
+  for (const width of [1024, 320]) {
+    await page.setViewportSize({ width, height: 740 })
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Abrir menu' }).click()
+    await menu.getByRole('link', { name: 'Sobre', exact: true }).click()
+    await expect(page).toHaveURL(/\/sobre$/)
+    await expect(page.getByRole('heading', { name: 'Sobre o EventScan', level: 1 })).toBeVisible()
+    await expect(menu).toBeHidden()
+    await expect(page.getByText('Lucas Shimabukuro', { exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+  }
+})
+
 test('criação, cadastro, QR pela câmera, segunda leitura e atualização do painel', async ({ page: organizer, context }) => {
   const title = 'Oficina de Validação'
   await logInAs(organizer, 'Organizador')

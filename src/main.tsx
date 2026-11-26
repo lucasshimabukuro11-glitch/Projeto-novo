@@ -1,7 +1,7 @@
 import { lazy, StrictMode, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useMatch } from 'react-router-dom'
 import '@fontsource-variable/inter'
 import '@fontsource-variable/manrope'
 import './styles.css'
@@ -14,6 +14,7 @@ import Workspace from './components/Workspace'
 import { Brand, Busy, Empty, Notice } from './components/ui'
 import Landing from './pages/Landing'
 
+const About = lazy(() => import('./pages/About'))
 const ProductCatalog = lazy(() => import('./pages/Products').then(m => ({ default: m.ProductCatalog })))
 const MyProducts = lazy(() => import('./pages/Products').then(m => ({ default: m.MyProducts })))
 const ProductEditor = lazy(() => import('./pages/Products').then(m => ({ default: m.ProductEditor })))
@@ -61,7 +62,8 @@ function RequireFirstAccess({ children }: { children: ReactNode }) {
 }
 
 function App() {
-  if (configIssue) return <main className="container page">
+  const aboutRoute = useMatch('/sobre')
+  if (configIssue && !aboutRoute) return <main className="container page">
     <Brand />
     <section className="panel expansion-panel">
       <h1>Configuração do Supabase necessária</h1>
@@ -75,6 +77,7 @@ function App() {
           <Suspense fallback={<div className="container page"><Busy /></div>}>
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/sobre" element={<About />} />
               <Route path="/produtos" element={<ProductCatalog />} />
               <Route path="/produtos/meus" element={<Secure role="organizer"><MyProducts /></Secure>} />
               <Route path="/produtos/novo" element={<Secure role="organizer"><ProductEditor /></Secure>} />
