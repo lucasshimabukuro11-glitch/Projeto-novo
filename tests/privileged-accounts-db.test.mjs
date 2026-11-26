@@ -99,6 +99,7 @@ suite('provisiona quatro contas, protege a ativação e aplica RLS de produtos',
                 where ca.event_id = e.id and ca.required) as activities
         from eventpass_private.provisioned_sample_events s
         join public.events e on e.id = s.event_id
+        left join public.certificate_settings cs on cs.event_id = s.event_id
         where s.owner_id = any($1)
       `, [owners.map(row => row.id)])
       assert.equal(eventRecords.rows.length, 9)
