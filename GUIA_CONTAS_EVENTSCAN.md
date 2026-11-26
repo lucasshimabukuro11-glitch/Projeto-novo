@@ -8,8 +8,9 @@ Confirme que o site e o script usam o mesmo projeto Supabase. Se as migrações 
 
 1. Instale a troca obrigatória de senha e o controle administrativo de papéis. [20261126000000_eventscan_privileged_accounts.sql](supabase/migrations/20261126000000_eventscan_privileged_accounts.sql)
 2. Atualize as permissões de produtos, instale as categorias e disponibilize a carga inicial. [20261126000001_eventscan_product_management.sql](supabase/migrations/20261126000001_eventscan_product_management.sql)
-3. Valide as migrações em uma instância de teste antes de integrar o Pull Request. A configuração atual da Vercel publica a `main` automaticamente. A branch de revisão tem o deploy automático desativado.
-4. Use `https://eventscan.vercel.app/entrar` depois de publicar a versão revisada. O site precisa incluir a tela **Primeiro acesso** para que as novas contas possam concluir a ativação.
+3. Instale os eventos fictícios e os modelos de certificado. [20261126000002_eventscan_sample_events.sql](supabase/migrations/20261126000002_eventscan_sample_events.sql)
+4. Valide as migrações em uma instância de teste antes de integrar o Pull Request. A configuração atual da Vercel publica a `main` automaticamente. A branch de revisão tem o deploy automático desativado.
+5. Use `https://eventscan.vercel.app/entrar` depois de publicar a versão revisada. O site precisa incluir a tela **Primeiro acesso** para que as novas contas possam concluir a ativação.
 
 ## Provisionar as quatro contas
 
@@ -40,16 +41,44 @@ age-keygen -y /caminho/seguro/eventscan-chave.txt
    node scripts/provision-eventscan-accounts.mjs /caminho/seguro/provisionamento.json
    ```
 5. Confira o relatório com e-mail, papel, resultado do login no Auth e quantidade de exemplos. Entregue o arquivo `.age` ao destinatário. O arquivo criptografado é criado antes da primeira conta. A saída do comando inclui o caminho e os resultados dos testes de login, com as senhas dentro do arquivo criptografado.
+6. O mesmo comando cria também os eventos fictícios, uma vez por organizador. Se as contas e os produtos já existirem no ambiente local, **aplique a terceira migração e execute o script novamente** com a mesma configuração: os eventos serão adicionados sem gerar novas senhas nem duplicar produtos.
 
 Repetir o comando com as mesmas contas preserva as senhas e os produtos existentes. Se uma execução criar apenas parte do lote, repita com o mesmo mapa de e-mails e outro caminho de saída para receber as credenciais das contas restantes. Guarde o primeiro pacote para os acessos já criados. Uma conta comum vinculada a um dos e-mails é sinalizada como conflito.
 
-| Posição | Perfil inicial | Produtos de exemplo após a carga |
-|---|---|---:|
-| Administrador principal | Administrador | 0 |
-| Organizador 1 | Organizador | 6 |
-| Organizador 2 | Organizador | 6 |
-| Organizador 3 | Organizador | 6 |
-| Total | | 18 |
+| Posição | Perfil inicial | Produtos | Eventos fictícios | Eventos com certificado habilitado |
+|---|---|---:|---:|---:|
+| Administrador principal | Administrador | 0 | 0 | 0 |
+| Organizador 1 | Organizador | 6 | 3 | 1 |
+| Organizador 2 | Organizador | 6 | 3 | 1 |
+| Organizador 3 | Organizador | 6 | 3 | 2 |
+| **Total** | | **18** | **9** | **4** |
+
+## Eventos fictícios e certificados
+
+A carga cria 3 eventos **publicados e identificados como “Exemplo”** para cada organizador (9 no total). A propriedade `events.is_demo` é verdadeira e o sistema mantém os eventos vinculados a seus proprietários. As datas começam de 21 a 37 dias após o provisionamento, e os locais são ilustrativos.
+
+Os quatro eventos com certificado habilitado são:
+
+- Organizador 1: **Oficina de Desenvolvimento Web (Exemplo)** — 4 horas
+- Organizador 2: **Oficina de Producao Cultural (Exemplo)** — 3 horas
+- Organizador 3: **Semana Academica de Tecnologia (Exemplo)** — 6 horas; **Seminario de Inovacao na Educacao (Exemplo)** — 4 horas
+
+Estes eventos terão configurações em `certificate_settings` e uma atividade obrigatória em `certificate_activities`. **Não são gerados certificados falsos ou presenças fictícias.** Para emitir um certificado real de teste, um participante deve estar inscrito, realizar um check-in válido, cumprir a atividade obrigatória (presença registrada pelo organizador) e aguardar a conclusão do evento. Certificados de exemplos contêm a indicação de que se trata de demonstração.
+
+O provisionamento é **idempotente**: as contas existentes são mantidas e a carga de eventos não é refeita após a primeira execução. Se um evento de exemplo for removido posteriormente, o script não o recriará automaticamente. Os eventos reais existentes nunca são alterados.
+
+Verificação opcional no Supabase SQL Editor, **somente leitura**:
+
+```sql
+select p.display_name, count(e.id) as eventos_ficticios,
+       count(cs.event_id) filter (where cs.enabled) as com_certificado
+from public.profiles p
+join public.events e on e.owner_id = p.id and e.is_demo
+left join public.certificate_settings cs on cs.event_id = e.id
+where p.role = 'organizer'
+group by p.id, p.display_name
+order by p.display_name;
+```
 
 ## Ativar e operar os acessos
 
