@@ -8,7 +8,7 @@ Faça um backup antes de atualizar um projeto com dados. Os arquivos SQL estão 
 
 1. Abra **SQL Editor → New query** no projeto Supabase escolhido.
 2. Em um banco vazio, copie e execute o primeiro arquivo inteiro. Repita com cada arquivo seguinte, na ordem da tabela.
-3. Em um banco com EventScan, confira as versões já aplicadas e execute apenas as pendentes, mantendo a ordem. Se as quatro primeiras já foram aplicadas, execute somente `20261122000000`. Se a equipe controla as migrações pela CLI, use esse mesmo fluxo para manter o histórico de versões.
+3. Em um banco com EventScan, confira as versões já aplicadas e execute apenas as pendentes, mantendo a ordem. Se a equipe controla as migrações pela CLI, use esse mesmo fluxo para manter o histórico de versões.
 4. Se não souber como o banco foi instalado, confira o histórico das migrações ou verifique no **Table Editor** a presença das tabelas da coluna de referência. A presença de uma tabela ajuda a identificar a versão. Confirme o histórico da instalação inteira antes de executar o arquivo seguinte.
 
 | Versão | Estrutura | Referência no Table Editor |
@@ -18,8 +18,11 @@ Faça um backup antes de atualizar um projeto com dados. Os arquivos SQL estão 
 | [20261119000001](supabase/migrations/20261119000001_eventscan_audit.sql) | Tentativas de leitura, monitoramento e alertas de auditoria | `validation_attempts` |
 | [20261119000002](supabase/migrations/20261119000002_eventscan_certificates.sql) | Modelos, atividades, emissão e verificação de certificados | `certificates` |
 | [20261122000000](supabase/migrations/20261122000000_eventscan_organizers_and_event_edit.sql) | Solicitações de organizador, edição com controle de versão e elegibilidade dos ingressos após promoção | `organizer_applications` |
+| [20261122000001](supabase/migrations/20261122000001_eventscan_products.sql) | Catálogo de produtos | `products` |
+| [20261126000000](supabase/migrations/20261126000000_eventscan_privileged_accounts.sql) | Ativação, permissões de contas e consulta administrativa de ingressos | `eventpass_private.provisioned_accounts` |
+| [20261126000001](supabase/migrations/20261126000001_eventscan_product_management.sql) | Categorias, permissões de produtos e carga inicial | `product_categories` |
 
-A última migração acrescenta `events.details_revision` e mantém os identificadores, códigos de ingresso e check-ins existentes. O SQL também instala as políticas de acesso e publica `events` e `event_activity` no Supabase Realtime. Para diagnosticar atualizações ao vivo, confira se as duas tabelas fazem parte da publicação `supabase_realtime`.
+A migração de edição de eventos acrescenta `events.details_revision` e mantém os identificadores, códigos de ingresso e check-ins existentes. O SQL também instala as políticas de acesso e publica `events` e `event_activity` no Supabase Realtime. Para diagnosticar atualizações ao vivo, confira se as duas tabelas fazem parte da publicação `supabase_realtime`.
 
 ## 2. Configurar cadastro e recuperação
 
@@ -54,29 +57,18 @@ O Auth gerencia as credenciais e a sessão no navegador. As reservas, os perfis 
 
 Uma configuração ausente ou inválida apresenta uma mensagem de configuração. Se o Supabase estiver inacessível, as telas mostram o erro de conexão e continuam usando a configuração real. O Modo Demo é disponibilizado pelo servidor de desenvolvimento do Vite quando as duas variáveis estão vazias.
 
-## 4. Habilitar o primeiro administrador
+## 4. Provisionar o administrador e os organizadores
 
-1. Cadastre a conta responsável no EventScan e confirme o e-mail recebido. Todo cadastro cria um participante.
-2. No **SQL Editor** do Supabase, um responsável autorizado pode habilitar a primeira conta administrativa. Troque `responsavel@example.com` pelo e-mail verificado e confira o perfil retornado.
+Todo cadastro público cria um participante. Para obter o administrador principal e três organizadores com troca obrigatória de senha, siga o procedimento protegido. [GUIA_CONTAS_EVENTSCAN.md](GUIA_CONTAS_EVENTSCAN.md)
 
-   ```sql
-   update public.profiles as p
-   set role = 'admin'
-   from auth.users as u
-   where p.id = u.id
-     and u.email_confirmed_at is not null
-     and lower(u.email) = lower('responsavel@example.com')
-   returning p.id, p.email, p.role;
-   ```
-
-3. Entre com a conta administrativa. Em outra sessão, um participante usa **Minha conta → Perfil de organizador** para informar organização, contato e cidade. A conta administrativa aprova ou rejeita em **Solicitações de organizador**. A aprovação libera **Meus eventos** e preserva ingressos e certificados da conta.
-4. Em **Meus eventos**, crie e publique um evento de teste. Reserve de outra conta, edite os dados do evento e confira o mesmo ingresso após recarregar. Use uma conta autorizada para validar o QR e confirme que o painel se atualiza. Após cumprir os critérios do evento, emita e verifique o certificado.
+Participantes podem usar **Minha conta → Perfil de organizador**. Um administrador aprova ou rejeita solicitações em **Solicitações de organizador**. A aprovação libera **Meus eventos** e preserva ingressos e certificados da conta.
 
 ## 5. Estrutura e permissões
 
 | Área | Onde fica |
 |---|---|
-| Contas e acesso | `auth.users`, `profiles`, `organizer_applications` |
+| Contas e acesso | `auth.users`, `profiles`, `organizer_applications`, `eventpass_private.provisioned_accounts` e histórico de papéis |
+| Catálogo | `products` e `product_categories` |
 | Eventos e disponibilidade | `events`, `event_sectors`, `ticket_types`, `seat_maps`, `event_seats`, `tickets` |
 | Equipe e portarias | `event_staff`, `gate_staff`, `event_gates` |
 | Entradas e auditoria | `check_ins`, `validation_attempts`, `event_activity`, `security_limits` |

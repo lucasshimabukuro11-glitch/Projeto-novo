@@ -64,11 +64,13 @@ Use a **Project URL** e a chave **Publishable** ou **anon** nas duas variáveis 
 
 ### Contas e permissões
 
-Todo cadastro cria um **participante**. Use **Minha conta → Perfil de organizador** para solicitar acesso. Administradores podem aprovar ou rejeitar solicitações no painel. O guia explica como habilitar a primeira conta administrativa. [Contas administrativas](CONFIGURACAO_SUPABASE.md#4-habilitar-o-primeiro-administrador)
+Todo cadastro cria um **participante**. Use **Minha conta → Perfil de organizador** para solicitar acesso. Administradores podem aprovar ou rejeitar solicitações no painel. O guia explica como habilitar a primeira conta administrativa. [Contas administrativas](GUIA_CONTAS_EVENTSCAN.md)
 
 O organizador adiciona contas à **Equipe de acesso** do próprio evento. Quando existem portarias, ele também atribui por onde cada funcionário pode operar. Administradores podem consultar os eventos, o monitor, a auditoria e os limites globais.
 
 O [seed de eventos fictícios](supabase/seed-demo.sql) continua disponível para Supabase local. Cadastre e confirme `organizador@example.test`, `equipe@example.test` e, opcionalmente, `admin@example.test` antes de executar o seed. Os cenários ampliados já vêm no modo demo do navegador.
+
+Consulte os guias de provisionamento das quatro contas e de administração do catálogo. [Contas](GUIA_CONTAS_EVENTSCAN.md) · [Produtos](CONFIGURACAO_PRODUTOS.md)
 
 ## Como operar e testar os módulos
 
@@ -122,12 +124,12 @@ O [vercel.json](vercel.json) usa o preset Vite com suporte a links diretos. Quan
 
 Aplique as migrações incrementais e configure as variáveis públicas e os endereços de retorno antes de publicar a nova versão. A página exibe um erro de configuração em produção quando as variáveis estão ausentes. [Passo a passo da Vercel](CONFIGURACAO_SUPABASE.md#3-conectar-o-projeto-vercel-existente)
 
-`git.deploymentEnabled.main` desativa o gatilho automático da Vercel para pushes na `main`. Após validar as migrações no Supabase usado pelo site, publique manualmente o commit autorizado no projeto Vercel existente. Para voltar a publicar automaticamente a `main`, retire a regra em uma atualização autorizada.
+`git.deploymentEnabled.main` habilita o gatilho automático da Vercel na `main`. Valide as migrações no Supabase usado pelo site antes de integrar o Pull Request. A branch de revisão de contas e produtos tem deploy automático desativado.
 
 ## Organização dos arquivos
 
 - `src/pages/expansion` reúne configuração de eventos, monitoramento, auditoria e certificados.
 - `src/components/expansion` contém editor de assentos, reserva por modalidade, formulários e PDF.
 - `src/data/expansion` concentra os contratos de dados e as implementações supabase e demo.
-- `supabase/migrations` mantém a instalação inicial e as quatro alterações incrementais.
+- `supabase/migrations` mantém a instalação inicial e as alterações incrementais.
 - `tests` contém as suítes unitárias, de integração e de navegador.

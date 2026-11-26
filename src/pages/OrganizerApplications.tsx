@@ -11,7 +11,8 @@ import type { ApplicationDecision, ApplicationStatus } from '../data/organizers'
 import { isDemo } from '../data/supabase'
 import { useResource } from '../data/useResource'
 
-function ApplicationBadge({ status }: { status: ApplicationStatus }) {
+function ApplicationBadge({ status, revoked }: { status: ApplicationStatus; revoked: boolean }) {
+  if (revoked) return <span className="status-chip danger-text">Acesso revogado</span>
   const tone = status === 'approved' ? 'success-text' : status === 'rejected' ? 'danger-text' : ''
   return <span className={`status-chip ${tone}`}>{applicationStatuses[status]}</span>
 }
@@ -22,9 +23,10 @@ export function RequestOrganizer() {
   const latest = useResource(`organizer-application:${actor.id}`,
     () => isDemo ? Promise.resolve(null) : latestApplication(actor.id), !isDemo)
   const action = useAction(latest.refresh)
+  const revoked = Boolean(latest.data?.access_revoked_at)
   useEffect(() => {
-    if (latest.data?.status === 'approved' && actor.role === 'participant') refreshProfile()
-  }, [latest.data?.status, actor.role, refreshProfile])
+    if (latest.data?.status === 'approved' && !revoked && actor.role === 'participant') refreshProfile()
+  }, [latest.data?.status, revoked, actor.role, refreshProfile])
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -47,11 +49,11 @@ export function RequestOrganizer() {
             {latest.error && <Notice>{latest.error} <button className="text-button" onClick={latest.refresh}>Tentar novamente</button></Notice>}
             {action.notice}
             {latest.data && <section className="panel expansion-panel">
-              <div className="badge-row"><h2>{latest.data.organization_name}</h2><ApplicationBadge status={latest.data.status} /></div>
+              <div className="badge-row"><h2>{latest.data.organization_name}</h2><ApplicationBadge status={latest.data.status} revoked={revoked} /></div>
               <p className="muted">Solicitação enviada em {eventDate(latest.data.requested_at)}.</p>
               {latest.data.status === 'rejected' && <p>Confira os dados da organização e envie uma nova solicitação.</p>}
             </section>}
-            {!latest.pending && !latest.error && (!latest.data || latest.data.status === 'rejected') &&
+            {!latest.pending && !latest.error && (!latest.data || latest.data.status === 'rejected' || revoked) &&
               <form className="panel expansion-panel stack-form" onSubmit={submit}>
                 <div className="form-grid">
                   <label>Nome da organização<input name="organization_name" required minLength={2} maxLength={120} /></label>
@@ -104,7 +106,7 @@ export function ReviewOrganizers() {
           <td><strong>{row.organization_name}</strong><small>{row.city} · {row.contact_email}</small></td>
           <td>{row.applicant.display_name}<small>{row.applicant.email}</small></td>
           <td>{eventDate(row.requested_at)}</td>
-          <td><ApplicationBadge status={row.status} />{row.reviewed_at && <small>{eventDate(row.reviewed_at)}</small>}</td>
+          <td><ApplicationBadge status={row.status} revoked={Boolean(row.access_revoked_at)} />{row.reviewed_at && <small>{eventDate(row.reviewed_at)}</small>}</td>
           <td>{row.status === 'pending' && <div className="button-row">
             <button className="button secondary small" disabled={action.busy}
               onClick={() => setDecision({ id: row.id, organization: row.organization_name, status: 'approved' })}>Aprovar</button>

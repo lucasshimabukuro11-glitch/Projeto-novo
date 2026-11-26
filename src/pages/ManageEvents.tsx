@@ -7,7 +7,7 @@ import { data, errorMessage } from '../data'
 import { brasiliaInstant, coverTypes, eventDate, eventStatusLabels, eventTime, isUpcoming, maxCoverSize, ticketState } from '../data/domain'
 import { useResource } from '../data/useResource'
 import { categories } from '../data/types'
-import type { Category, EventInput, EventRecord, Profile } from '../data/types'
+import type { Category, EventInput, EventRecord, Profile, RosterEntry } from '../data/types'
 import { Busy, Confirmation, Cover, Empty, Notice, PageHeading, Pager } from '../components/ui'
 
 export function EventStatus({ event }: { event: EventRecord }) {
@@ -36,7 +36,10 @@ export function ManageEvents({ admin = false }: { admin?: boolean }) {
               <div className="badge-row"><EventStatus event={event} />{event.is_demo && <span className="status-chip">Demo</span>}</div>
               <span className="managed-capacity">{event.reserved_count}/{event.capacity} vagas</span>
               {admin
-                ? <Link className="button secondary small" to={`/eventos/${event.id}`}>Ver detalhes <ArrowUpRight size={16} /></Link>
+                ? <div className="button-row">
+                  <Link className="button secondary small" to={`/eventos/${event.id}`}>Ver detalhes <ArrowUpRight size={16} /></Link>
+                  <Link className="text-button" to={`/administracao/eventos/${event.id}/ingressos`}>Ver ingressos</Link>
+                </div>
                 : <Link className="button secondary small" to={`/organizacao/eventos/${event.id}`} aria-label={`Gerenciar ${event.title}`}>Gerenciar <ArrowRight size={16} /></Link>}
             </article>
           ))}
@@ -174,6 +177,44 @@ export function ManageEvent() {
   return <EventManagement key={id} event={request.data} viewer={profile!} refreshEvent={request.refresh} />
 }
 
+function RosterTable({ rows, event, cancel, busy = false }: {
+  rows: RosterEntry[]; event: EventRecord; cancel?: (id: string) => void; busy?: boolean
+}) {
+  if (!rows.length) return <p className="muted">Ainda não há inscrições.</p>
+  return <div className="table-wrap">
+    <table><thead><tr><th>Participante</th><th>Status</th><th>Horário de entrada</th>{cancel && <th>Ações</th>}</tr></thead>
+      <tbody>{rows.map(row => {
+        const state = ticketState(row, event)
+        return <tr key={row.id}><td><strong>{row.display_name}</strong><small>{row.email}</small></td>
+          <td><span className={`status-chip ${state.tone}-text`}>{state.label}</span></td>
+          <td>{row.checked_in_at ? `${eventDate(row.checked_in_at)} · ${eventTime(row.checked_in_at)}` : '—'}</td>
+          {cancel && <td>{!row.checked_in_at && !row.cancelled_at && event.status !== 'cancelled' && <button className="text-button danger-text"
+            disabled={busy} aria-label={`Cancelar ingresso de ${row.display_name}`} onClick={() => cancel(row.id)}>Cancelar</button>}</td>}
+        </tr>
+      })}</tbody>
+    </table>
+  </div>
+}
+
+export function AdminEventTickets() {
+  const { id = '' } = useParams()
+  const viewer = useAuth().profile!
+  const [page, setPage] = useState(0)
+  const event = useResource(`admin-event:${viewer.id}:${id}`, () => data.event(id, viewer), true)
+  const roster = useResource(`admin-roster:${viewer.id}:${id}:${page}`, () => data.roster(viewer, id, page), true)
+  return <>
+    <Link className="back-link" to="/administracao/eventos"><ArrowLeft size={17} /> Eventos</Link>
+    <PageHeading title="Ingressos do evento">{event.data?.title}</PageHeading>
+    {(event.pending || roster.pending) && <Busy />}
+    {(event.error || roster.error) && <Notice>{event.error || roster.error}</Notice>}
+    {event.data && roster.data && <section className="panel management-panel">
+      <RosterTable rows={roster.data.rows} event={event.data} />
+      <Pager page={page} next={roster.data.hasMore} onChange={setPage} />
+    </section>}
+    {!event.pending && !event.error && !event.data && <Empty title="Evento indisponível">Selecione um evento na listagem.</Empty>}
+  </>
+}
+
 function EventManagement({ event, viewer, refreshEvent }: { event: EventRecord; viewer: Profile; refreshEvent: () => void }) {
   const [page, setPage] = useState(0)
   const [pending, setPending] = useState(false)
@@ -256,22 +297,8 @@ function EventManagement({ event, viewer, refreshEvent }: { event: EventRecord; 
         )}
         {roster.pending && <Busy />}
         {roster.error && <Notice>{roster.error}</Notice>}
-        {roster.data && (roster.data.rows.length ? (
-          <div className="table-wrap">
-            <table><thead><tr><th>Participante</th><th>Status</th><th>Horário de entrada</th><th>Ações</th></tr></thead>
-              <tbody>{roster.data.rows.map(row => {
-                const state = ticketState(row, event)
-                return (
-                  <tr key={row.id}><td><strong>{row.display_name}</strong><small>{row.email}</small></td>
-                    <td><span className={`status-chip ${state.tone}-text`}>{state.label}</span></td>
-                    <td>{row.checked_in_at ? `${eventDate(row.checked_in_at)} · ${eventTime(row.checked_in_at)}` : '—'}</td>
-                    <td>{!row.checked_in_at && !row.cancelled_at && event.status !== 'cancelled' && <button className="text-button danger-text"
-                      disabled={pending} aria-label={`Cancelar ingresso de ${row.display_name}`} onClick={() => { setCancelId(row.id); setConfirmation('ticket') }}>Cancelar</button>}</td></tr>
-                )
-              })}</tbody>
-            </table>
-          </div>
-        ) : <p className="muted">Ainda não há inscrições.</p>)}
+        {roster.data && <RosterTable rows={roster.data.rows} event={event} busy={pending}
+          cancel={id => { setCancelId(id); setConfirmation('ticket') }} />}
         <Pager page={page} next={Boolean(roster.data?.hasMore)} onChange={setPage} />
       </section>
       <section className="panel management-panel">

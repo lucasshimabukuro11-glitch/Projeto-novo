@@ -1,26 +1,18 @@
-# Cadastro de produtos no EventScan
+# Catálogo de produtos do EventScan
 
-Este módulo utiliza o **login já existente do Supabase Auth**. Não há segundo cadastro de usuários.
+O catálogo utiliza o mesmo Supabase Auth dos eventos. A instalação inicial está em `20261122000001_eventscan_products.sql`. A gestão de categorias requer as migrações de contas e produtos descritas no guia geral. [Ordem das migrações](CONFIGURACAO_SUPABASE.md#1-instalar-ou-atualizar-o-banco)
 
-## Instalação
-1. Conclua as migrações anteriores da branch `eventscan/supabase-integration`.
-2. No SQL Editor do Supabase **do mesmo projeto conectado à Vercel**, execute integralmente `supabase/migrations/20261122000001_eventscan_products.sql` uma única vez, após backup.
-3. Em Vercel, configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` no ambiente de produção. O projeto utiliza **Vite**, não Next.js.
-4. Publique a branch depois de revisar o PR e a configuração de `vercel.json`. No momento, o deploy automático está desativado para `main` e a branch anterior de integração.
-5. Valide em dois navegadores: criar duas contas, cadastrar produto com uma, verificar catálogo público, confirmar que a outra conta não pode editar/excluir o produto. Verifique também preços e estoque após recarregar a página.
+## Operar o catálogo
 
-## Páginas
-- `/produtos`: catálogo público, somente produtos publicados, listagem limitada aos 100 mais recentes.
-- `/produtos/meus`: meus produtos, exige login.
-- `/produtos/novo`: novo produto, exige login.
-- `/produtos/meus/:id/editar`: edição de produto próprio, exige login.
+- Em **Produtos**, qualquer pessoa pode consultar os itens publicados e filtrar por categoria.
+- Organizadores acessam **Meus produtos** no painel para cadastrar, editar, publicar e desativar seus itens.
+- Administradores acessam **Administração → Produtos** para gerenciar itens de todos os organizadores. Em **Categorias**, podem cadastrar, renomear e desativar categorias. A desativação limita novos cadastros nessa categoria e preserva os produtos existentes.
+- A carga inicial abastece cada organizador provisionado com seis produtos ilustrativos publicados. A repetição do provisionamento preserva o catálogo. [Provisionar contas e produtos](GUIA_CONTAS_EVENTSCAN.md#provisionar-as-quatro-contas)
 
-## Dados e segurança
-- Tabela `public.products`: dono, nome, descrição, preço em centavos (BRL), estoque, URL HTTPS da imagem, publicado/rascunho e datas.
-- RLS permite leitura pública apenas de produtos publicados e leitura de todos os registros pelo próprio dono. Criar, alterar e excluir dependem do usuário autenticado ser o proprietário.
-- O preço é armazenado como centavos inteiros para evitar erro de arredondamento de valores monetários.
-- V1 usa **URL HTTPS** de imagem e não inclui upload de arquivo, carrinho, pagamento ou pedidos. Isso evita criar fluxo de vendas não solicitado.
-- Para tornar a listagem privada em vez de pública, remova a condição `active` da política de leitura e a rota pública; atualmente os produtos publicados são visíveis a todos.
+## Dados e permissões
 
-## Verificações
-O código foi escrito e enviado ao GitHub, mas build e testes ainda precisam ser executados em um ambiente com dependências instaladas. Não considerar o aplicativo publicado até concluir SQL, configuração da Vercel, revisão e deploy.
+`public.products` armazena o dono, categoria, descrição, preço em centavos, estoque, imagem e estado de publicação. `public.product_categories` armazena as categorias. Produtos anteriores à migração podem permanecer sem categoria. A imagem cadastrada pelo organizador usa uma URL HTTPS. Os exemplos usam imagens ilustrativas do próprio aplicativo.
+
+RLS libera a criação de produtos a organizadores para sua própria conta e a edição de todos os itens a administradores. A coluna do proprietário é protegida contra alterações pelo navegador. Organizadores podem excluir seus próprios itens mediante confirmação. Administradores podem desativar a publicação pelo formulário de edição.
+
+Para testar, entre em duas sessões com organizadores distintos, edite e recarregue o produto na sessão do dono e tente abrir o mesmo editor pela outra conta. Confirme também na vitrine do participante que somente os produtos publicados aparecem.
