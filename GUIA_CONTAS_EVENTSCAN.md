@@ -55,7 +55,7 @@ Repetir o comando com as mesmas contas preserva as senhas e os produtos existent
 
 ## Eventos fictícios e certificados
 
-A carga cria 3 eventos **publicados e identificados como “Exemplo”** para cada organizador (9 no total). A propriedade `events.is_demo` é verdadeira e o sistema mantém os eventos vinculados a seus proprietários. As datas começam de 21 a 37 dias após o provisionamento, e os locais são ilustrativos.
+A carga cria 3 eventos **publicados e identificados como “Exemplo”** para cada organizador (9 no total). A propriedade `events.is_demo` é verdadeira e o sistema mantém os eventos vinculados a seus proprietários. As datas começam de 21 a 37 dias após o provisionamento, e os locais são ilustrativos. Cada evento recebe um setor Geral, uma modalidade **Entrada gratuita (Exemplo)** e uma portaria **Entrada principal (Exemplo)** para testar reservas, ingresso com QR Code e check-in.
 
 Os quatro eventos com certificado habilitado são:
 
