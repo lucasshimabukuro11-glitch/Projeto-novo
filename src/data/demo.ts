@@ -196,7 +196,7 @@ export const demoData: DataService = {
   }),
 
   roster: (actor, id, page) => transact(false, state => {
-    ownedEvent(state, actor, id)
+    if (actor.role !== 'admin') ownedEvent(state, actor, id)
     const rows = state.tickets.filter(ticket => ticket.event_id === id).sort((a, b) => b.issued_at.localeCompare(a.issued_at))
     return toPage(rows.slice(page * pageSize, (page + 1) * pageSize + 1).map(ticket => {
       const { display_name, email } = state.profiles.find(record => record.id === ticket.participant_id)!

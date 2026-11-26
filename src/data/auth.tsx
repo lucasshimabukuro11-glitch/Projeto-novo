@@ -4,11 +4,14 @@ import type { Session } from '@supabase/supabase-js'
 import { data, errorMessage } from './index'
 import { demoProfile, signInDemo, signInDemoEmail, signOutDemo, signUpDemo } from './demo'
 import type { DemoPersona } from './demo-seed'
-import { isDemo, loadProfile, supabase } from './supabase'
+import { isDemo, loadProfile, supabase, value } from './supabase'
 import type { Profile } from './types'
+
+type CredentialState = 'active' | 'password_required' | 'finish_required' | 'sign_in_required'
 
 interface AuthContext {
   profile: Profile | null
+  credentialState: CredentialState
   pending: boolean
   error: string
   hasCheckIn: boolean
@@ -17,6 +20,8 @@ interface AuthContext {
   refreshProfile: () => void
   requestRecovery: (email: string) => Promise<void>
   changeRecoveredPassword: (password: string) => Promise<void>
+  changeInitialPassword: (password: string) => Promise<void>
+  finishFirstAccess: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signUp: (name: string, email: string, password: string) => Promise<boolean>
   signInAs: (persona: DemoPersona) => Promise<void>
@@ -50,6 +55,7 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [credentialState, setCredentialState] = useState<CredentialState>('active')
   const [resolved, setResolved] = useState(false)
   const [error, setError] = useState('')
   const [recoveryUser, setRecoveryUser] = useState<string | null>(null)
@@ -84,23 +90,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id
   const sessionReady = session !== undefined
   useEffect(() => {
-    if (isDemo || !sessionReady) return
+    if (!supabase || !sessionReady) return
     let active = true
     setError('')
     if (!userId) {
       setProfile(null)
+      setCredentialState('active')
       setResolved(true)
       return
     }
     setResolved(false)
-    loadProfile(userId)
-      .then(user => { if (active) setProfile(user) })
+    Promise.all([loadProfile(userId), supabase.rpc('account_credential_state')])
+      .then(([user, access]) => {
+        if (!active) return
+        const state = value<CredentialState>(access)
+        setProfile(user)
+        setCredentialState(state)
+      })
       .catch(issue => { if (active) { setProfile(null); setError(errorMessage(issue)) } })
       .finally(() => { if (active) setResolved(true) })
     return () => { active = false }
   }, [sessionReady, userId, profileRevision])
 
-  const current = isDemo || profile?.id === userId ? profile : null
+  const access = profile?.id === userId ? credentialState : 'active'
+  const current = isDemo || (profile?.id === userId && access === 'active') ? profile : null
   useEffect(() => {
     if (!current || current.role === 'organizer') return
     let active = true
@@ -177,14 +190,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (failure) throw failure
     writeRecoveryUser(null)
     setRecoveryUser(null)
+    if (access === 'password_required' || access === 'finish_required') await finishFirstAccess()
+  }
+
+  async function finishFirstAccess() {
+    if (!supabase || !userId) throw new Error('Entre na sua conta para concluir o primeiro acesso.')
+    try {
+      value(await supabase.rpc('complete_first_access'))
+      setCredentialState('sign_in_required')
+      const { error: failure } = await supabase.auth.signOut({ scope: 'global' })
+      if (failure) throw failure
+    } finally {
+      refreshProfile()
+    }
+  }
+
+  async function changeInitialPassword(password: string) {
+    if (!supabase || access !== 'password_required') throw new Error('A troca inicial de senha está indisponível.')
+    const { error: failure } = await supabase.auth.updateUser({ password })
+    if (failure) throw failure
+    await finishFirstAccess()
   }
 
   const pending = !resolved || Boolean(userId && profile?.id !== userId && !error)
   const hasCheckIn = Boolean(current && (current.role === 'organizer' || current.id === teamMember))
   return (
     <Context.Provider value={{
-      profile: current, pending, error, hasCheckIn, recoveryPending: !isDemo && !sessionReady,
-      recoveringPassword, refreshProfile, requestRecovery, changeRecoveredPassword, signIn, signUp, signInAs, signOut,
+      profile: current, credentialState: access, pending, error, hasCheckIn, recoveryPending: !isDemo && !sessionReady,
+      recoveringPassword, refreshProfile, requestRecovery, changeRecoveredPassword, changeInitialPassword, finishFirstAccess,
+      signIn, signUp, signInAs, signOut,
     }}>
       {children}
     </Context.Provider>

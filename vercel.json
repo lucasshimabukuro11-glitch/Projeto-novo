@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "main": true,
-      "eventscan/supabase-integration": false
+      "eventscan/supabase-integration": false,
+      "eventscan/privileged-accounts": false
     }
   },
   "rewrites": [

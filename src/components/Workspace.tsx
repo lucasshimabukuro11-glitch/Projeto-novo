@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, LayoutDashboard, ShieldCheck, ScanLine, UserRoundCheck, UsersRound } from 'lucide-react'
+import { Activity, CalendarDays, LayoutDashboard, PackageOpen, ShieldCheck, ScanLine, UserRoundCheck, UsersRound } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { isDemo } from '../data/supabase'
 
@@ -12,6 +12,7 @@ export default function Workspace({ admin = false }: { admin?: boolean }) {
         <nav aria-label={admin ? 'Painel administrativo' : 'Painel do organizador'}>
           <NavLink end to={root}><LayoutDashboard size={18} /> Visão geral</NavLink>
           <NavLink to={`${root}/eventos`}><CalendarDays size={18} /> {admin ? 'Eventos' : 'Meus eventos'}</NavLink>
+          {!isDemo && <NavLink to={admin ? `${root}/produtos` : '/produtos/meus'}><PackageOpen size={18} /> {admin ? 'Produtos' : 'Meus produtos'}</NavLink>}
           <NavLink to={`${root}/monitoramento`}><Activity size={18} /> Monitoramento</NavLink>
           <NavLink to={`${root}/auditoria`}><ShieldCheck size={18} /> Auditoria</NavLink>
           {admin && !isDemo && <NavLink to={`${root}/organizadores`}><UserRoundCheck size={18} /> Solicitações de organizador</NavLink>}

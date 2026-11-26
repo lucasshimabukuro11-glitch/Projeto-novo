@@ -14,6 +14,7 @@ export interface OrganizerApplication extends ApplicationInput {
   status: ApplicationStatus
   requested_at: string
   reviewed_at: string | null
+  access_revoked_at: string | null
 }
 type ApplicationReview = OrganizerApplication & {
   applicant: { display_name: string; email: string }
@@ -32,7 +33,7 @@ function connectedClient() {
 
 export async function latestApplication(userId: string) {
   return value<OrganizerApplication | null>(await connectedClient().from('organizer_applications')
-    .select('id, applicant_id, organization_name, contact_email, city, status, requested_at, reviewed_at')
+    .select('id, applicant_id, organization_name, contact_email, city, status, requested_at, reviewed_at, access_revoked_at')
     .eq('applicant_id', userId).order('requested_at', { ascending: false }).order('id').limit(1).maybeSingle())
 }
 
@@ -44,7 +45,7 @@ export async function requestOrganizer(input: ApplicationInput) {
 
 export async function reviewQueue(status: ApplicationStatus | 'all', page: number) {
   const query = connectedClient().from('organizer_applications')
-    .select('id, applicant_id, organization_name, contact_email, city, status, requested_at, reviewed_at, applicant:profiles!organizer_applications_applicant_id_fkey(display_name, email)')
+    .select('id, applicant_id, organization_name, contact_email, city, status, requested_at, reviewed_at, access_revoked_at, applicant:profiles!organizer_applications_applicant_id_fkey(display_name, email)')
   if (status !== 'all') query.eq('status', status)
   const start = page * pageSize
   return toPage(value<ApplicationReview[]>(await query.order('requested_at', { ascending: false }).order('id').range(start, start + pageSize)))

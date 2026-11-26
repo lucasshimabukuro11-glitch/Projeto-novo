@@ -48,7 +48,6 @@ export default function Layout({ children }: { children: ReactNode }) {
           <nav className={`main-nav ${openMenu ? 'nav-open' : ''}`} aria-label="Menu principal" id="menu-principal">
             <Link to="/#eventos" onClick={() => setOpenMenu(false)}>Explorar eventos</Link>
             <NavLink to="/produtos" onClick={() => setOpenMenu(false)}>Produtos</NavLink>
-            {profile && <NavLink to="/produtos/meus" onClick={() => setOpenMenu(false)}>Meus produtos</NavLink>}
             {!profile && <Link to="/#como-funciona" onClick={() => setOpenMenu(false)}>Como funciona</Link>}
             {!profile && <Link to="/#organizadores" onClick={() => setOpenMenu(false)}>Para organizadores</Link>}
             {!profile && <Link className="mobile-signup" to="/cadastro">Criar conta</Link>}

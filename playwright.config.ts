@@ -28,7 +28,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'demo', testMatch: ['eventpass.spec.ts','eventscan.spec.ts'], use: { baseURL: demoUrl } },
-    ...(publicKey ? [{ name: 'supabase-local', testMatch: ['supabase.spec.ts', 'supabase-onboarding.spec.ts'], use: { baseURL: connectedUrl } }] : []),
+    ...(publicKey ? [{ name: 'supabase-local', testMatch: ['supabase.spec.ts', 'supabase-onboarding.spec.ts', 'privileged-accounts.spec.ts'], use: { baseURL: connectedUrl } }] : []),
   ],
   webServer: servers,
 })
