@@ -5,6 +5,9 @@ import type { Page } from '@playwright/test'
 import pg from 'pg'
 import { createEvent, useQrAsCamera } from './helpers'
 
+const api = process.env.EVENTPASS_TEST_API_URL ?? 'http://127.0.0.1:54321'
+const database = process.env.EVENTPASS_TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+
 async function logIn(page: Page, email: string, password: string) {
   await page.goto('/entrar')
   await page.getByLabel('E-mail', { exact: true }).fill(email)
@@ -15,8 +18,8 @@ async function logIn(page: Page, email: string, password: string) {
 test('navegador usa Supabase Auth, Storage, reserva e check-in do início ao fim', async ({ page: organizer, browser }) => {
   test.setTimeout(60_000)
   const key = process.env.EVENTPASS_TEST_PUBLIC_KEY!
-  const client = createClient('http://127.0.0.1:54321', key, { auth: { persistSession: false, autoRefreshToken: false } })
-  const db = new pg.Client({ connectionString: 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' })
+  const client = createClient(api, key, { auth: { persistSession: false, autoRefreshToken: false } })
+  const db = new pg.Client({ connectionString: database })
   await db.connect()
   const run = randomUUID().slice(0, 10)
   const ownerEmail = `ui-organizador-${run}@example.test`

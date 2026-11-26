@@ -4,9 +4,9 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import pg from 'pg'
 
-const api = 'http://127.0.0.1:54321'
-const inbox = 'http://127.0.0.1:54324'
-const database = 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+const api = process.env.EVENTPASS_TEST_API_URL ?? 'http://127.0.0.1:54321'
+const inbox = process.env.EVENTPASS_TEST_MAILPIT_URL ?? 'http://127.0.0.1:54324'
+const database = process.env.EVENTPASS_TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 
 function sdk() {
   return createClient(api, process.env.EVENTPASS_TEST_PUBLIC_KEY!, { auth: { persistSession: false, autoRefreshToken: false } })

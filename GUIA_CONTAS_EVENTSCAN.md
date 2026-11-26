@@ -106,4 +106,6 @@ npm run test:e2e -- --workers=1
 
 Para integração, defina `EVENTPASS_TEST_PUBLIC_KEY` com a chave pública local. Para provisionamento e primeiro acesso no navegador, defina também `EVENTSCAN_TEST_ADMIN_KEY` com a chave administrativa **local** e tenha `age` no PATH. Consulte os valores no seu terminal com `npx supabase@3.2.0 status`. Os testes cobrem a entrega criptografada, a rejeição das senhas iniciais, os quatro papéis, edição e persistência de produtos, catálogo, categorias, permissões e reexecução da carga.
 
+Ao usar uma segunda instância local para fazer os testes, aponte `EVENTPASS_TEST_API_URL`, `EVENTPASS_TEST_DATABASE_URL` e `EVENTPASS_TEST_MAILPIT_URL` para a API, o PostgreSQL e a caixa de e-mails dessa instância. Informe as chaves da mesma instância para preservar as contas do ambiente de demonstração.
+
 No ambiente hospedado, confirme separadamente que o site publicado contém a nova tela e que as quatro contas acessam os painéis corretos depois da ativação. Os resultados do Supabase local e os do site publicado devem ser registrados separadamente.

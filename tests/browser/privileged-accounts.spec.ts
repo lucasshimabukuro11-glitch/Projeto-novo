@@ -4,7 +4,8 @@ import { expect, test } from '@playwright/test'
 import type { BrowserContext, Page } from '@playwright/test'
 import pg from 'pg'
 
-const api = 'http://127.0.0.1:54321'
+const api = process.env.EVENTPASS_TEST_API_URL ?? 'http://127.0.0.1:54321'
+const database = process.env.EVENTPASS_TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 const serviceKey = process.env.EVENTSCAN_TEST_ADMIN_KEY
 
 test.use({ trace: 'off' })
@@ -20,7 +21,7 @@ test('primeiro acesso e catálogo conectam quatro perfis ao Supabase local', asy
   test.skip(!serviceKey, 'Defina a chave administrativa do Supabase local para testar provisionamento.')
   test.setTimeout(100_000)
   const client = createClient(api, serviceKey!, { auth: { persistSession: false, autoRefreshToken: false } })
-  const db = new pg.Client({ connectionString: 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' })
+  const db = new pg.Client({ connectionString: database })
   const run = randomUUID().slice(0, 8)
   const slots = ['admin', 'organizer-1', 'organizer-2', 'organizer-3', 'participant']
   const users = slots.map(slot => ({
@@ -80,7 +81,9 @@ test('primeiro acesso e catálogo conectam quatro perfis ao Supabase local', asy
     await owner.reload()
     const shirt = owner.getByRole('article').filter({ hasText: 'Camiseta Credencial Tech' })
     await expect(shirt.getByText('Estoque 27', { exact: false })).toBeVisible()
-    await expect.poll(() => shirt.locator('img').evaluate(node => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+    const image = shirt.locator('img')
+    await image.scrollIntoViewIfNeeded()
+    await expect.poll(() => image.evaluate(node => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
     await other.goto(editPath!)
     await expect(other.getByRole('heading', { name: 'Produto indisponível' })).toBeVisible()
 

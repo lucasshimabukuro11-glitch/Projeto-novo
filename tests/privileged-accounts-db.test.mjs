@@ -8,7 +8,8 @@ import test from 'node:test'
 import { createClient } from '@supabase/supabase-js'
 import pg from 'pg'
 
-const api = 'http://127.0.0.1:54321'
+const api = process.env.EVENTPASS_TEST_API_URL ?? 'http://127.0.0.1:54321'
+const database = process.env.EVENTPASS_TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 const publicKey = process.env.EVENTPASS_TEST_PUBLIC_KEY
 const adminKey = process.env.EVENTSCAN_TEST_ADMIN_KEY
 const auth = { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
@@ -29,7 +30,9 @@ function runAge(args, input) {
 }
 
 suite('provisiona quatro contas, protege a ativação e aplica RLS de produtos', { timeout: 90_000 }, async t => {
-  const db = new pg.Client({ connectionString: 'postgresql://postgres:postgres@127.0.0.1:54322/postgres' })
+  assert.ok([api, database].every(url => ['localhost', '127.0.0.1', '[::1]'].includes(new URL(url).hostname)),
+    'Use uma instância local e descartável do Supabase.')
+  const db = new pg.Client({ connectionString: database })
   await db.connect()
   const cloudAdmin = createClient(api, adminKey, { auth })
   const directory = mkdtempSync(join(tmpdir(), 'eventscan-local-provisioning-'))
@@ -200,6 +203,37 @@ suite('provisiona quatro contas, protege a ativação e aplica RLS de produtos',
       assert.ok((await admin.sdk.rpc('seed_provisioned_products')).error)
     })
 
+    await t.test('eventos de exemplo aceitam inscrição gratuita e check-in pelo setor configurado', async () => {
+      const sample = await db.query(`
+        select e.id, e.owner_id, s.id as sector_id, t.id as type_id, g.id as gate_id
+        from eventpass_private.provisioned_sample_events seed
+        join public.events e on e.id = seed.event_id
+        join public.event_sectors s on s.event_id = e.id and s.name = 'Geral' and not s.seated
+        join public.ticket_types t on t.event_id = e.id and t.sector_id = s.id
+          and t.name = 'Entrada gratuita (Exemplo)' and t.active and t.per_person = 1
+        join public.event_gates g on g.event_id = e.id and g.sector_id = s.id
+        where seed.owner_id = any($1) and e.capacity = s.capacity and s.capacity = t.capacity
+      `, [accounts.map(account => account.id)])
+      assert.equal(sample.rows.length, 9)
+      events.push(...sample.rows.map(event => event.id))
+
+      for (const event of sample.rows) {
+        const ticket = ok(await participant.rpc('reserve_typed_ticket', {
+          p_event: event.id, p_type: event.type_id, p_seat: null, p_request: randomUUID(),
+        }))
+        assert.equal(ticket.sector_id, event.sector_id)
+        const owner = accounts.find(account => account.id === event.owner_id)
+        const scan = ok(await owner.sdk.rpc('validate_at_gate', {
+          p_event: event.id, p_gate: event.gate_id, p_code: ticket.code,
+        }))
+        assert.equal(scan.status, 'valid')
+      }
+      const models = ok(await participant.rpc('my_certificate_events'))
+        .filter(model => sample.rows.some(event => event.id === model.event_id))
+      assert.equal(models.length, 4)
+      assert.ok(models.every(model => model.eligibility === 'completion' && !model.certificate))
+    })
+
     await t.test('administrador consulta ingressos de um evento e organizador vê apenas seus próprios inscritos', async () => {
       const [admin, owner, other] = accounts
       const event = ok(await owner.sdk.rpc('create_event', {
@@ -220,6 +254,7 @@ suite('provisiona quatro contas, protege a ativação e aplica RLS de produtos',
   } finally {
     try {
       if (events.length) {
+        await db.query('delete from public.check_ins where event_id = any($1)', [events])
         await db.query('delete from public.tickets where event_id = any($1)', [events])
         await db.query('delete from public.events where id = any($1)', [events])
       }
